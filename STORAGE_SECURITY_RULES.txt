@@ -1,0 +1,127 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isTeacher() {
+      return isAuthenticated() && 
+        exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    function isStudent() {
+      return isAuthenticated() && 
+        exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+    
+    function isParent() {
+      return isAuthenticated() && 
+        exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'parent';
+    }
+    
+    function isValidFileType() {
+      return request.resource.contentType.matches('image/.*') ||
+        request.resource.contentType.matches('application/pdf') ||
+        request.resource.contentType.matches('application/msword') ||
+        request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.wordprocessingml.document') ||
+        request.resource.contentType.matches('application/vnd.ms-excel') ||
+        request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') ||
+        request.resource.contentType.matches('text/plain');
+    }
+    
+    function isValidFileSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB limit
+    }
+    
+    function isValidFileName() {
+      return request.resource.name.matches('.*[^/\\\\:*?"<>|].*') &&
+        request.resource.name.size() < 255;
+    }
+    
+    // Profile pictures - users can upload their own
+    match /profilePictures/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        request.auth.uid == userId &&
+        isValidFileType() &&
+        isValidFileSize() &&
+        isValidFileName();
+    }
+    
+    // Study materials - teachers and admins can upload
+    match /studyMaterials/{materialId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isTeacher()) &&
+        isValidFileType() &&
+        isValidFileSize() &&
+        isValidFileName();
+    }
+    
+    // Assignment files - teachers and admins can upload
+    match /assignments/{assignmentId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isTeacher()) &&
+        isValidFileType() &&
+        isValidFileSize() &&
+        isValidFileName();
+    }
+    
+    // Student submissions - students can upload their own
+    match /submissions/{submissionId}/{fileName} {
+      allow read: if isAuthenticated() && (
+        isAdmin() || isTeacher() ||
+        (isStudent() && resource.metadata.studentId == request.auth.uid) ||
+        (isParent() && resource.metadata.studentId in get(/databases/(default)/documents/users/$(request.auth.uid)).data.children)
+      );
+      allow write: if isAuthenticated() && 
+        request.resource.metadata.studentId == request.auth.uid &&
+        isValidFileType() &&
+        isValidFileSize() &&
+        isValidFileName();
+    }
+    
+    // Announcement attachments - teachers and admins can upload
+    match /announcements/{announcementId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isTeacher()) &&
+        isValidFileType() &&
+        isValidFileSize() &&
+        isValidFileName();
+    }
+    
+    // School documents - only admins can upload
+    match /schoolDocuments/{documentId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        isValidFileType() &&
+        isValidFileSize() &&
+        isValidFileName();
+    }
+    
+    // Temporary uploads - authenticated users can upload temporarily
+    match /temp/{userId}/{fileName} {
+      allow read, write: if isAuthenticated() && 
+        request.auth.uid == userId &&
+        isValidFileType() &&
+        isValidFileSize() &&
+        isValidFileName();
+    }
+    
+    // Default deny all other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

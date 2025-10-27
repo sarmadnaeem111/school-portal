@@ -1,0 +1,158 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isTeacher() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
+    }
+    
+    function isStudent() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+    
+    function isParent() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
+    }
+    
+    function isValidUserData(data) {
+      return data.keys().hasAll(['name', 'email', 'role']) &&
+        data.name is string && data.name.size() > 0 &&
+        data.email is string && data.email.matches('.*@.*\\..*') &&
+        data.role in ['admin', 'teacher', 'student', 'parent'];
+    }
+    
+    // Users collection - strict access control
+    match /users/{userId} {
+      // Read: Users can read their own data, admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Write: Only admins can create/update users, users can update their own profile
+      allow create: if isAdmin() && isValidUserData(resource.data);
+      allow update: if isAdmin() || (isOwner(userId) && 
+        resource.data.role == request.resource.data.role); // Prevent role escalation
+      allow delete: if isAdmin();
+    }
+    
+    // Classes collection
+    match /classes/{classId} {
+      // Read: All authenticated users
+      allow read: if isAuthenticated();
+      
+      // Write: Only admins and teachers
+      allow write: if isAdmin() || isTeacher();
+    }
+    
+    // Subjects collection
+    match /subjects/{subjectId} {
+      // Read: All authenticated users
+      allow read: if isAuthenticated();
+      
+      // Write: Only admins and teachers
+      allow write: if isAdmin() || isTeacher();
+    }
+    
+    // Attendance collection
+    match /attendance/{attendanceId} {
+      // Read: Students can read their own, teachers/admins can read all
+      allow read: if isAuthenticated() && (
+        isAdmin() || isTeacher() || 
+        (isStudent() && resource.data.studentId == request.auth.uid) ||
+        (isParent() && resource.data.studentId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.children)
+      );
+      
+      // Write: Only teachers and admins
+      allow write: if isAdmin() || isTeacher();
+    }
+    
+    // Grades collection
+    match /grades/{gradeId} {
+      // Read: Students can read their own, teachers/admins can read all
+      allow read: if isAuthenticated() && (
+        isAdmin() || isTeacher() || 
+        (isStudent() && resource.data.studentId == request.auth.uid) ||
+        (isParent() && resource.data.studentId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.children)
+      );
+      
+      // Write: Only teachers and admins
+      allow write: if isAdmin() || isTeacher();
+    }
+    
+    // Study Materials collection
+    match /studyMaterials/{materialId} {
+      // Read: All authenticated users
+      allow read: if isAuthenticated();
+      
+      // Write: Only teachers and admins
+      allow write: if isAdmin() || isTeacher();
+    }
+    
+    // Messages collection
+    match /messages/{messageId} {
+      // Read: Users can read messages where they are sender or recipient
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.recipientId == request.auth.uid ||
+        isAdmin()
+      );
+      
+      // Write: Users can create messages, admins can do anything
+      allow create: if isAuthenticated() && 
+        request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+    
+    // Announcements collection
+    match /announcements/{announcementId} {
+      // Read: All authenticated users
+      allow read: if isAuthenticated();
+      
+      // Write: Only admins and teachers
+      allow write: if isAdmin() || isTeacher();
+    }
+    
+    // School Profile collection
+    match /schoolProfile/{profileId} {
+      // Read: All authenticated users
+      allow read: if isAuthenticated();
+      
+      // Write: Only admins
+      allow write: if isAdmin();
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Read: Users can read their own notifications
+      allow read: if isAuthenticated() && 
+        resource.data.userId == request.auth.uid;
+      
+      // Write: Only admins and teachers
+      allow write: if isAdmin() || isTeacher();
+    }
+    
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
