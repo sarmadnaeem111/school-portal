@@ -12,6 +12,7 @@ import Messages from './Messages';
 import Announcements from './Announcements';
 import ParentResults from './ParentResults';
 import ParentFeeChalan from './ParentFeeChalan';
+import ParentTimetable from './ParentTimetable';
 
 const ParentDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -109,6 +110,7 @@ const ParentDashboard = () => {
             <Route path="/attendance" element={<AttendanceView />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/announcements" element={<Announcements />} />
+            <Route path="/timetable" element={<ParentTimetable />} />
             <Route path="/results" element={<ParentResults />} />
             <Route path="/fee-chalan" element={<ParentFeeChalan />} />
             <Route path="/" element={<ParentOverview />} />
