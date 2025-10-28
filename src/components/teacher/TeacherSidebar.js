@@ -84,6 +84,12 @@ const TeacherSidebar = ({ onClose, handleLogout }) => {
             Mark Attendance
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/teacher/timetable" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-table me-2"></i>
+            Timetable
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/teacher/my-attendance" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-user-clock me-2"></i>
