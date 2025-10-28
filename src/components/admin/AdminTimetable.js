@@ -3,6 +3,7 @@ import { Card, Row, Col, Button, Table, Form, Badge, InputGroup, Modal } from 'r
 import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
+const ALL_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DEFAULT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const DEFAULT_SLOTS = [
   { id: '1', start: '08:00', end: '08:40' },
@@ -197,6 +198,17 @@ const AdminTimetable = () => {
     }
   };
 
+  const toggleDay = (day) => {
+    const set = new Set(days);
+    if (set.has(day)) {
+      set.delete(day);
+    } else {
+      set.add(day);
+    }
+    const ordered = ALL_DAYS.filter(d => set.has(d));
+    setDays(ordered);
+  };
+
   const openEdit = (day, slotId) => {
     if (!selectedClassId) return;
     setEditDay(day);
@@ -279,6 +291,30 @@ const AdminTimetable = () => {
               {status && <div className="alert alert-info mb-0">{status}</div>}
             </Col>
           </Row>
+        </Card.Body>
+      </Card>
+
+      <Card className="mb-3">
+        <Card.Header>
+          <strong>Day Settings</strong>
+        </Card.Header>
+        <Card.Body>
+          <Row className="mb-2">
+            {ALL_DAYS.map(day => (
+              <Col key={day} xs={6} sm={4} md={3} className="mb-2">
+                <Form.Check
+                  type="checkbox"
+                  id={`day-${day}`}
+                  label={day}
+                  checked={days.includes(day)}
+                  onChange={() => toggleDay(day)}
+                />
+              </Col>
+            ))}
+          </Row>
+          <div className="d-flex gap-2">
+            <Button variant="outline-primary" size="sm" onClick={saveSettings} disabled={savingSettings}>{savingSettings ? 'Saving...' : 'Save Settings'}</Button>
+          </div>
         </Card.Body>
       </Card>
 
