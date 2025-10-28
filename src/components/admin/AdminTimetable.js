@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Row, Col, Button, Table, Form, Badge } from 'react-bootstrap';
+import { Card, Row, Col, Button, Table, Form, Badge, InputGroup } from 'react-bootstrap';
 import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const SLOTS = [
+const DEFAULT_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+const DEFAULT_SLOTS = [
   { id: '1', start: '08:00', end: '08:40' },
   { id: '2', start: '08:45', end: '09:25' },
   { id: '3', start: '09:30', end: '10:10' },
@@ -21,6 +21,9 @@ const AdminTimetable = () => {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [timetable, setTimetable] = useState({});
   const [status, setStatus] = useState('');
+  const [days, setDays] = useState(DEFAULT_DAYS);
+  const [slots, setSlots] = useState(DEFAULT_SLOTS);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -34,6 +37,19 @@ const AdminTimetable = () => {
         setClasses(clsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setSubjects(subSnap.docs.map(d => ({ id: d.id, ...d.data() })));
         setTeachers(usersSnap.docs.filter(d => d.data().role === 'teacher').map(d => ({ id: d.id, ...d.data() })));
+
+        // Load timetable settings (days/slots)
+        try {
+          const settingsRef = doc(db, 'settings', 'timetable');
+          const settingsSnap = await getDoc(settingsRef);
+          if (settingsSnap.exists()) {
+            const data = settingsSnap.data();
+            if (Array.isArray(data.days) && data.days.length > 0) setDays(data.days);
+            if (Array.isArray(data.slots) && data.slots.length > 0) setSlots(data.slots);
+          }
+        } catch (e) {
+          // Ignore and use defaults
+        }
       } catch (e) {
         console.error('Failed to load data', e);
       } finally {
@@ -67,7 +83,7 @@ const AdminTimetable = () => {
     // Initialize structure
     classes.forEach(c => {
       schedule[c.id] = {};
-      DAYS.forEach(d => {
+      days.forEach(d => {
         schedule[c.id][d] = {};
       });
     });
@@ -77,8 +93,8 @@ const AdminTimetable = () => {
       const classSubjects = [...(subjectsByClass[cls.id] || [])];
       if (classSubjects.length === 0) continue;
       let subjectIndex = 0;
-      for (const day of DAYS) {
-        for (const slot of SLOTS) {
+      for (const day of days) {
+        for (const slot of slots) {
           // Try up to N times to find a subject whose teacher is free
           let attempts = 0;
           let placed = false;
@@ -116,8 +132,8 @@ const AdminTimetable = () => {
           classId: c.id,
           className: `${c.name} - ${c.section}`,
           schedule: schedule[c.id],
-          days: DAYS,
-          slots: SLOTS,
+          days: days,
+          slots: slots,
           updatedAt: new Date(),
         }, { merge: true });
       }));
@@ -149,6 +165,33 @@ const AdminTimetable = () => {
 
   const selectedClass = classes.find(c => c.id === selectedClassId);
   const schedule = timetable?.schedule || {};
+
+  const addSlot = () => {
+    const nextIndex = slots.length + 1;
+    setSlots([...slots, { id: String(nextIndex), start: '13:00', end: '13:40' }]);
+  };
+
+  const removeSlot = (id) => {
+    setSlots(slots.filter(s => s.id !== id).map((s, idx) => ({ ...s, id: String(idx + 1) })));
+  };
+
+  const updateSlot = (id, field, value) => {
+    setSlots(slots.map(s => s.id === id ? { ...s, [field]: value } : s));
+  };
+
+  const saveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const ref = doc(db, 'settings', 'timetable');
+      await setDoc(ref, { days, slots }, { merge: true });
+      setStatus('Timetable settings saved.');
+    } catch (e) {
+      console.error('Failed to save settings', e);
+      setStatus('Failed to save settings.');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   return (
     <div>
@@ -183,6 +226,48 @@ const AdminTimetable = () => {
         </Card.Body>
       </Card>
 
+      <Card className="mb-3">
+        <Card.Header>
+          <strong>Slot Settings</strong>
+        </Card.Header>
+        <Card.Body>
+          <Table bordered size="sm" responsive className="mb-2">
+            <thead>
+              <tr>
+                <th style={{ width: 80 }}>#</th>
+                <th>Start</th>
+                <th>End</th>
+                <th style={{ width: 120 }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slots.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.id}</td>
+                  <td>
+                    <InputGroup size="sm">
+                      <Form.Control type="time" value={s.start} onChange={(e) => updateSlot(s.id, 'start', e.target.value)} />
+                    </InputGroup>
+                  </td>
+                  <td>
+                    <InputGroup size="sm">
+                      <Form.Control type="time" value={s.end} onChange={(e) => updateSlot(s.id, 'end', e.target.value)} />
+                    </InputGroup>
+                  </td>
+                  <td>
+                    <Button variant="outline-danger" size="sm" onClick={() => removeSlot(s.id)} disabled={slots.length <= 1}>Remove</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+          <div className="d-flex gap-2">
+            <Button variant="outline-secondary" size="sm" onClick={addSlot}>Add Slot</Button>
+            <Button variant="outline-primary" size="sm" onClick={saveSettings} disabled={savingSettings}>{savingSettings ? 'Saving...' : 'Save Settings'}</Button>
+          </div>
+        </Card.Body>
+      </Card>
+
       {selectedClass && (
         <Card>
           <Card.Header>
@@ -193,16 +278,16 @@ const AdminTimetable = () => {
               <thead>
                 <tr>
                   <th>Day / Slot</th>
-                  {SLOTS.map(s => (
+                  {slots.map(s => (
                     <th key={s.id}>{s.start} - {s.end}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {DAYS.map(day => (
+                {days.map(day => (
                   <tr key={day}>
                     <td><strong>{day}</strong></td>
-                    {SLOTS.map(s => {
+                    {slots.map(s => {
                       const cell = schedule?.[day]?.[s.id];
                       return (
                         <td key={`${day}-${s.id}`}>
