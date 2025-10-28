@@ -96,6 +96,12 @@ const AdminSidebar = ({ onClose, handleLogout }) => {
             Attendance Reports
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/admin/whatsapp" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fab fa-whatsapp me-2"></i>
+            WhatsApp Messaging
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/admin/teacher-attendance" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-user-tie me-2"></i>
