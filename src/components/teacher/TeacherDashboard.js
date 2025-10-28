@@ -13,6 +13,7 @@ import Results from './Results';
 import StudyMaterials from './StudyMaterials';
 import ParentMessages from './ParentMessages';
 import Announcements from './Announcements';
+import TeacherTimetable from './TeacherTimetable';
 
 const TeacherDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -113,6 +114,7 @@ const TeacherDashboard = () => {
             <Route path="/materials" element={<StudyMaterials />} />
             <Route path="/messages" element={<ParentMessages />} />
             <Route path="/announcements" element={<Announcements />} />
+            <Route path="/timetable" element={<TeacherTimetable />} />
             <Route path="/" element={<TeacherOverview />} />
           </Routes>
         </div>
