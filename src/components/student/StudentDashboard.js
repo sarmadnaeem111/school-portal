@@ -12,6 +12,7 @@ import StudyMaterials from './StudyMaterials';
 import Announcements from './Announcements';
 import StudentResults from './StudentResults';
 import StudentFeeChalan from './StudentFeeChalan';
+import StudentTimetable from './StudentTimetable';
 
 const StudentDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -109,6 +110,7 @@ const StudentDashboard = () => {
             <Route path="/attendance" element={<MyAttendance />} />
             <Route path="/materials" element={<StudyMaterials />} />
             <Route path="/announcements" element={<Announcements />} />
+            <Route path="/timetable" element={<StudentTimetable />} />
             <Route path="/results" element={<StudentResults />} />
             <Route path="/fee-chalan" element={<StudentFeeChalan />} />
             <Route path="/" element={<StudentOverview />} />
