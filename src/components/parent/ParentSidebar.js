@@ -90,6 +90,12 @@ const ParentSidebar = ({ onClose, handleLogout }) => {
             Attendance
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/parent/timetable" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-table me-2"></i>
+            Timetable
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/parent/messages" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-envelope me-2"></i>
