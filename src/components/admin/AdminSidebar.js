@@ -102,6 +102,12 @@ const AdminSidebar = ({ onClose, handleLogout }) => {
             WhatsApp Messaging
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/admin/timetable" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-table me-2"></i>
+            Timetable
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/admin/teacher-attendance" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-user-tie me-2"></i>
