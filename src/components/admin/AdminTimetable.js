@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Row, Col, Button, Table, Form, Badge, InputGroup } from 'react-bootstrap';
+import { Card, Row, Col, Button, Table, Form, Badge, InputGroup, Modal } from 'react-bootstrap';
 import { collection, getDocs, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
@@ -24,6 +24,10 @@ const AdminTimetable = () => {
   const [days, setDays] = useState(DEFAULT_DAYS);
   const [slots, setSlots] = useState(DEFAULT_SLOTS);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDay, setEditDay] = useState('');
+  const [editSlotId, setEditSlotId] = useState('');
+  const [editSubjectId, setEditSubjectId] = useState('');
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -193,6 +197,58 @@ const AdminTimetable = () => {
     }
   };
 
+  const openEdit = (day, slotId) => {
+    if (!selectedClassId) return;
+    setEditDay(day);
+    setEditSlotId(slotId);
+    const cell = schedule?.[day]?.[slotId];
+    setEditSubjectId(cell?.subjectId || '');
+    setEditOpen(true);
+  };
+
+  const saveCell = async () => {
+    if (!selectedClassId || !editDay || !editSlotId) return;
+    const classSubjects = subjectsByClass[selectedClassId] || [];
+    const subj = classSubjects.find(s => s.id === editSubjectId) || null;
+
+    const nextTimetable = { ...timetable };
+    const nextSchedule = { ...(nextTimetable.schedule || {}) };
+    if (!nextSchedule[editDay]) nextSchedule[editDay] = {};
+    nextSchedule[editDay] = { ...nextSchedule[editDay] };
+    if (subj) {
+      nextSchedule[editDay][editSlotId] = {
+        subjectId: subj.id,
+        subjectName: subj.name,
+        teacherId: subj.teacherId || null,
+      };
+    } else {
+      // Clearing the slot
+      nextSchedule[editDay][editSlotId] = {
+        subjectId: null,
+        subjectName: 'Free/Study',
+        teacherId: null,
+      };
+    }
+
+    try {
+      const ref = doc(db, 'timetables', selectedClassId);
+      await setDoc(ref, {
+        classId: selectedClassId,
+        className: `${selectedClass?.name} - ${selectedClass?.section}`,
+        schedule: nextSchedule,
+        days: days,
+        slots: slots,
+        updatedAt: new Date(),
+      }, { merge: true });
+      setTimetable({ ...(timetable || {}), schedule: nextSchedule });
+      setEditOpen(false);
+      setStatus('Timetable updated.');
+    } catch (e) {
+      console.error('Failed to save cell', e);
+      setStatus('Failed to update timetable.');
+    }
+  };
+
   return (
     <div>
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -290,7 +346,7 @@ const AdminTimetable = () => {
                     {slots.map(s => {
                       const cell = schedule?.[day]?.[s.id];
                       return (
-                        <td key={`${day}-${s.id}`}>
+                        <td key={`${day}-${s.id}`} style={{ cursor: selectedClass ? 'pointer' : 'default' }} onClick={() => openEdit(day, s.id)}>
                           {cell ? (
                             <div>
                               <div>{cell.subjectName || '—'}</div>
@@ -306,6 +362,28 @@ const AdminTimetable = () => {
           </Card.Body>
         </Card>
       )}
+
+      <Modal show={editOpen} onHide={() => setEditOpen(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit Slot</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group className="mb-3">
+            <Form.Label>Subject</Form.Label>
+            <Form.Select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}>
+              <option value="">Free / Study Period</option>
+              {(subjectsByClass[selectedClassId] || []).map(sub => (
+                <option key={sub.id} value={sub.id}>{sub.name}</option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+          <div className="text-muted">Day: {editDay} | Slot: {editSlotId}</div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancel</Button>
+          <Button variant="primary" onClick={saveCell}>Save</Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };
