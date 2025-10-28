@@ -90,6 +90,12 @@ const StudentSidebar = ({ onClose, handleLogout }) => {
             My Attendance
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/student/timetable" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-table me-2"></i>
+            Timetable
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/student/materials" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-book me-2"></i>
