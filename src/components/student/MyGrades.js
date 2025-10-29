@@ -7,6 +7,7 @@ import { db } from '../../firebase/config';
 const MyGrades = () => {
   const { currentUser } = useAuth();
   const [grades, setGrades] = useState([]);
+  const [selectedTerm, setSelectedTerm] = useState('all');
   const [subjects, setSubjects] = useState([]);
   const [studentInfo, setStudentInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +47,7 @@ const MyGrades = () => {
   };
 
   const getSubjectGrades = (subjectId) => {
-    return grades.filter(grade => grade.subjectId === subjectId);
+    return grades.filter(grade => grade.subjectId === subjectId && (selectedTerm === 'all' || grade.term === selectedTerm));
   };
 
   const calculateSubjectAverage = (subjectId) => {
@@ -90,6 +91,19 @@ const MyGrades = () => {
               <h5>Overall Performance</h5>
             </Card.Header>
             <Card.Body>
+              <Row className="mb-3">
+                <Col md={4}>
+                  <div className="d-flex align-items-center">
+                    <span className="me-2">Term:</span>
+                    <select className="form-select" value={selectedTerm} onChange={(e) => setSelectedTerm(e.target.value)}>
+                      <option value="all">All Terms</option>
+                      <option value="first">First Term</option>
+                      <option value="second">Second Term</option>
+                      <option value="third">Third Term</option>
+                    </select>
+                  </div>
+                </Col>
+              </Row>
               <div className="text-center">
                 <h2 className={`text-${getGradeColor(getOverallAverage())}`}>
                   {getOverallAverage().toFixed(1)}%
