@@ -109,14 +109,33 @@ export const generateRateLimitKey = (action, identifier) => {
  */
 export const getSecureErrorMessage = (error) => {
   const errorMessage = error?.message || 'An error occurred';
+  const errorCode = error?.code || '';
   
-  // Don't expose internal error details
-  if (errorMessage.includes('permission-denied') || errorMessage.includes('unauthorized')) {
+  // Check authentication errors first (login/signup related)
+  // Firebase Auth error codes - these take priority
+  if (
+    errorCode.includes('auth/user-not-found') ||
+    errorCode.includes('auth/wrong-password') ||
+    errorCode.includes('auth/invalid-credential') ||
+    errorMessage.includes('user-not-found') ||
+    errorMessage.includes('wrong-password') ||
+    errorMessage.includes('invalid-credential') ||
+    errorMessage.includes('invalid email') ||
+    errorMessage.includes('invalid password')
+  ) {
+    return 'Entered Wrong Email or Password. Please try again';
+  }
+  
+  // Don't expose internal error details - but only for non-auth permission errors
+  if (
+    (errorCode.includes('permission-denied') || errorMessage.includes('permission-denied')) &&
+    !errorCode.includes('auth/') && !errorMessage.includes('auth/')
+  ) {
     return 'Access denied. Please contact your administrator.';
   }
   
-  if (errorMessage.includes('user-not-found') || errorMessage.includes('wrong-password')) {
-    return 'Invalid email or password';
+  if (errorMessage.includes('unauthorized') && !errorCode.includes('auth/')) {
+    return 'Access denied. Please contact your administrator.';
   }
   
   if (errorMessage.includes('email-already-in-use')) {
