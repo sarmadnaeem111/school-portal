@@ -20,6 +20,8 @@ const GradeManagement = () => {
     maxMarks: '',
     remarks: ''
   });
+  const [bulkEntryActive, setBulkEntryActive] = useState(false);
+  const [currentStudentIndex, setCurrentStudentIndex] = useState(0);
 
   useEffect(() => {
     fetchTeacherSubjects();
@@ -80,38 +82,98 @@ const GradeManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      console.log('Submitting grade with form data:', formData);
-      console.log('Available students:', students);
-      
-      const gradeData = {
+      // If editing a single grade, keep existing behavior
+      if (editingGrade) {
+        const gradeData = {
+          ...formData,
+          teacherId: currentUser.uid,
+          teacherName: currentUser.displayName,
+          createdAt: new Date(),
+          percentage: (parseFloat(formData.marks) / parseFloat(formData.maxMarks)) * 100
+        };
+        await updateDoc(doc(db, 'grades', editingGrade.id), gradeData);
+        setShowModal(false);
+        setEditingGrade(null);
+        setFormData({ studentId: '', subjectId: '', examType: '', marks: '', maxMarks: '', remarks: '' });
+        fetchSubjectGrades();
+        return;
+      }
+
+      // Start bulk entry flow: require subject, exam type, max marks
+      if (!formData.subjectId || !formData.examType || !formData.maxMarks) {
+        alert('Please select exam type and enter max marks.');
+        return;
+      }
+
+      if (students.length === 0) {
+        alert('No students found for this subject’s class.');
+        return;
+      }
+
+      // Initialize bulk entry mode
+      setBulkEntryActive(true);
+      setCurrentStudentIndex(0);
+      setFormData({
         ...formData,
+        studentId: students[0].id,
+        marks: ''
+      });
+    } catch (error) {
+      console.error('Error preparing grade entry:', error);
+    }
+  };
+
+  const saveCurrentStudentGrade = async () => {
+    const currentStudent = students[currentStudentIndex];
+    if (!currentStudent) return;
+
+    if (formData.marks === '' || isNaN(parseFloat(formData.marks))) {
+      alert('Please enter valid obtained marks.');
+      return false;
+    }
+
+    try {
+      const gradeData = {
+        studentId: currentStudent.id,
+        subjectId: formData.subjectId,
+        examType: formData.examType,
+        marks: formData.marks,
+        maxMarks: formData.maxMarks,
+        remarks: formData.remarks,
         teacherId: currentUser.uid,
         teacherName: currentUser.displayName,
         createdAt: new Date(),
         percentage: (parseFloat(formData.marks) / parseFloat(formData.maxMarks)) * 100
       };
-      
-      console.log('Grade data to be saved:', gradeData);
-
-      if (editingGrade) {
-        await updateDoc(doc(db, 'grades', editingGrade.id), gradeData);
-      } else {
-        await addDoc(collection(db, 'grades'), gradeData);
-      }
-
-      setShowModal(false);
-      setFormData({
-        studentId: '',
-        subjectId: '',
-        examType: '',
-        marks: '',
-        maxMarks: '',
-        remarks: ''
-      });
-      fetchSubjectGrades();
+      await addDoc(collection(db, 'grades'), gradeData);
+      return true;
     } catch (error) {
       console.error('Error saving grade:', error);
+      alert('Failed to save grade for ' + currentStudent.name);
+      return false;
     }
+  };
+
+  const handleNextStudent = async () => {
+    const saved = await saveCurrentStudentGrade();
+    if (!saved) return;
+    const nextIndex = currentStudentIndex + 1;
+    if (nextIndex >= students.length) {
+      // Finished
+      setBulkEntryActive(false);
+      setShowModal(false);
+      setFormData({ studentId: '', subjectId: '', examType: '', marks: '', maxMarks: '', remarks: '' });
+      fetchSubjectGrades();
+      return;
+    }
+    setCurrentStudentIndex(nextIndex);
+    setFormData({ ...formData, studentId: students[nextIndex].id, marks: '' });
+  };
+
+  const handlePrevStudent = () => {
+    const prevIndex = Math.max(0, currentStudentIndex - 1);
+    setCurrentStudentIndex(prevIndex);
+    setFormData({ ...formData, studentId: students[prevIndex].id, marks: '' });
   };
 
   const handleEdit = (grade) => {
@@ -226,35 +288,23 @@ const GradeManagement = () => {
         </Card>
       )}
 
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
+      <Modal show={showModal} onHide={() => { setShowModal(false); setBulkEntryActive(false); setEditingGrade(null); }}>
         <Modal.Header closeButton>
-          <Modal.Title>{editingGrade ? 'Edit Grade' : 'Add New Grade'}</Modal.Title>
+          <Modal.Title>{editingGrade ? 'Edit Grade' : bulkEntryActive ? 'Enter Marks for Students' : 'Add New Grade'}</Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
           <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Student</Form.Label>
-              <Form.Select
-                value={formData.studentId}
-                onChange={(e) => setFormData({...formData, studentId: e.target.value})}
-                required
-              >
-                <option value="">Select Student</option>
-                {students.map(student => (
-                  <option key={student.id} value={student.id}>{student.name}</option>
-                ))}
-              </Form.Select>
-              {students.length === 0 && selectedSubject && (
-                <Form.Text className="text-warning">
-                  No students found for this subject's class. Please ensure students are assigned to the correct class.
-                </Form.Text>
-              )}
-              {!selectedSubject && (
-                <Form.Text className="text-muted">
-                  Please select a subject first to load students.
-                </Form.Text>
-              )}
-            </Form.Group>
+            {editingGrade && (
+              <Form.Group className="mb-3">
+                <Form.Label>Student</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={getStudentName(formData.studentId)}
+                  readOnly
+                  className="bg-light"
+                />
+              </Form.Group>
+            )}
 
             <Form.Group className="mb-3">
               <Form.Label>Subject</Form.Label>
@@ -277,6 +327,7 @@ const GradeManagement = () => {
                     value={formData.examType}
                     onChange={(e) => setFormData({...formData, examType: e.target.value})}
                     required
+                    disabled={bulkEntryActive}
                   >
                     <option value="">Select Exam Type</option>
                     <option value="quiz">Quiz</option>
@@ -295,20 +346,30 @@ const GradeManagement = () => {
                     value={formData.maxMarks}
                     onChange={(e) => setFormData({...formData, maxMarks: e.target.value})}
                     required
+                    disabled={bulkEntryActive}
                   />
                 </Form.Group>
               </Col>
             </Row>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Obtained Marks</Form.Label>
-              <Form.Control
-                type="number"
-                value={formData.marks}
-                onChange={(e) => setFormData({...formData, marks: e.target.value})}
-                required
-              />
-            </Form.Group>
+            {bulkEntryActive || editingGrade ? (
+              <>
+                {bulkEntryActive && (
+                  <div className="mb-2">
+                    <strong>Student:</strong> {students[currentStudentIndex]?.name}
+                  </div>
+                )}
+                <Form.Group className="mb-3">
+                  <Form.Label>Obtained Marks</Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={formData.marks}
+                    onChange={(e) => setFormData({...formData, marks: e.target.value})}
+                    required
+                  />
+                </Form.Group>
+              </>
+            ) : null}
 
             <Form.Group className="mb-3">
               <Form.Label>Remarks</Form.Label>
@@ -321,12 +382,34 @@ const GradeManagement = () => {
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              {editingGrade ? 'Update' : 'Add'} Grade
-            </Button>
+            {!bulkEntryActive && !editingGrade && (
+              <>
+                <Button variant="secondary" onClick={() => setShowModal(false)}>
+                  Cancel
+                </Button>
+                <Button variant="primary" type="submit">
+                  Add Grade
+                </Button>
+              </>
+            )}
+            {editingGrade && (
+              <>
+                <Button variant="secondary" onClick={() => { setShowModal(false); setEditingGrade(null); }}>
+                  Cancel
+                </Button>
+                <Button variant="primary" type="submit">Update Grade</Button>
+              </>
+            )}
+            {bulkEntryActive && (
+              <>
+                <Button variant="secondary" onClick={handlePrevStudent} disabled={currentStudentIndex === 0}>
+                  Previous
+                </Button>
+                <Button variant="primary" onClick={handleNextStudent}>
+                  {currentStudentIndex === students.length - 1 ? 'Save & Finish' : 'Save & Next'}
+                </Button>
+              </>
+            )}
           </Modal.Footer>
         </Form>
       </Modal>
