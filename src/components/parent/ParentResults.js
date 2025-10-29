@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Badge, Alert, Spinner, Button } from 'react-bootstrap';
+import { Row, Col, Card, Table, Badge, Alert, Spinner, Button, Form } from 'react-bootstrap';
 import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +13,8 @@ const ParentResults = () => {
   const [schoolProfile, setSchoolProfile] = useState(null);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('all');
+  const [termGrades, setTermGrades] = useState([]);
 
   useEffect(() => {
     if (currentUser && currentUser.uid) {
@@ -64,8 +66,56 @@ const ParentResults = () => {
         const resultsDoc = resultsSnapshot.docs[0];
         setChildResults({ id: resultsDoc.id, ...resultsDoc.data() });
       } else {
-        setChildResults(null);
+        // Fallback: aggregate directly from grades for this child
+        const child = children.find(c => c.id === childId);
+        const classId = child?.classId;
+
+        // Fetch subjects of the child's class for readable names
+        let subjectsMap = {};
+        if (classId) {
+          const subjectsQuery = query(collection(db, 'subjects'), where('classId', '==', classId));
+          const subjectsSnapshot = await getDocs(subjectsQuery);
+          subjectsSnapshot.docs.forEach(d => {
+            const data = d.data();
+            subjectsMap[d.id] = data?.name || d.id;
+          });
+        }
+
+        // Fetch all grades for this child
+        const gradesQuery = query(collection(db, 'grades'), where('studentId', '==', childId));
+        const gradesSnapshot = await getDocs(gradesQuery);
+        const gradeDocs = gradesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Aggregate per subject
+        const perSubject = {};
+        gradeDocs.forEach(g => {
+          const subjectName = subjectsMap[g.subjectId] || g.subjectId || 'Subject';
+          if (!perSubject[subjectName]) {
+            perSubject[subjectName] = { totalObtained: 0, totalMarks: 0 };
+          }
+          perSubject[subjectName].totalObtained += parseFloat(g.marks) || 0;
+          perSubject[subjectName].totalMarks += parseFloat(g.maxMarks) || 0;
+        });
+
+        // Shape into the expected results.grades structure
+        const gradesShaped = {};
+        Object.entries(perSubject).forEach(([subjectName, sums]) => {
+          gradesShaped[subjectName] = {
+            aggregate: {
+              obtainedMarks: sums.totalObtained,
+              totalMarks: sums.totalMarks
+            }
+          };
+        });
+
+        setChildResults({ grades: gradesShaped });
       }
+
+      // Always fetch raw grades for term filtering
+      const childGradesQuery = query(collection(db, 'grades'), where('studentId', '==', childId));
+      const childGradesSnapshot = await getDocs(childGradesQuery);
+      const childGradesList = childGradesSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setTermGrades(childGradesList);
     } catch (error) {
       console.error('Error fetching child results:', error);
       setMessage('Error fetching results');
@@ -103,6 +153,15 @@ const ParentResults = () => {
   };
 
   const calculateOverallGrade = (results) => {
+    // If a specific term is selected, compute from filtered raw grades
+    if (selectedTerm !== 'all') {
+      const filtered = termGrades.filter(g => (g.term || '') === selectedTerm);
+      if (filtered.length === 0) return 'N/A';
+      const totalMarks = filtered.reduce((sum, g) => sum + (parseFloat(g.maxMarks) || 0), 0);
+      const totalObtained = filtered.reduce((sum, g) => sum + (parseFloat(g.marks) || 0), 0);
+      if (totalMarks === 0) return 'N/A';
+      return calculateGrade(totalObtained, totalMarks);
+    }
     if (!results || !results.grades) return 'N/A';
     
     let totalMarks = 0;
@@ -411,10 +470,24 @@ const ParentResults = () => {
                     <i className="fas fa-graduation-cap me-2"></i>
                     Academic Results
                   </h5>
-                  <Button variant="light btn-enhanced" onClick={printResults}>
+                  <div className="d-flex align-items-center gap-2">
+                    <Form.Select
+                      size="sm"
+                      value={selectedTerm}
+                      onChange={(e) => setSelectedTerm(e.target.value)}
+                      className="bg-white"
+                      style={{ width: '160px' }}
+                    >
+                      <option value="all">All Terms</option>
+                      <option value="first">First Term</option>
+                      <option value="second">Second Term</option>
+                      <option value="third">Third Term</option>
+                    </Form.Select>
+                    <Button variant="light btn-enhanced" onClick={printResults}>
                     <i className="fas fa-print me-2"></i>
                     Print Results
-                  </Button>
+                    </Button>
+                  </div>
                 </div>
               </Card.Header>
               <Card.Body className="p-4">
@@ -436,34 +509,64 @@ const ParentResults = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {childResults.grades && Object.keys(childResults.grades).length > 0 ? (
-                      Object.entries(childResults.grades).map(([subject, gradeData]) => {
-                        const totalObtained = Object.values(gradeData).reduce((sum, g) => sum + (g.obtainedMarks || 0), 0);
-                        const totalMarks = Object.values(gradeData).reduce((sum, g) => sum + (g.totalMarks || 0), 0);
-                        const percentage = totalMarks > 0 ? ((totalObtained / totalMarks) * 100).toFixed(2) : 0;
-                        const grade = calculateGrade(totalObtained, totalMarks);
-                        
-                        return (
-                          <tr key={subject}>
-                            <td className="fw-bold">{subject}</td>
-                            <td>{totalObtained}</td>
-                            <td>{totalMarks}</td>
-                            <td>{percentage}%</td>
-                            <td>
-                              <Badge bg={grade === 'A+' ? 'success' : grade === 'A' ? 'success' : grade === 'B' ? 'warning' : grade === 'C' ? 'warning' : 'danger'} className="badge-enhanced">
-                                {grade}
-                              </Badge>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan="5" className="text-center text-muted">
-                          No grades available
-                        </td>
-                      </tr>
-                    )}
+                    {(() => {
+                      if (selectedTerm !== 'all') {
+                        const filtered = termGrades.filter(g => (g.term || '') === selectedTerm);
+                        if (filtered.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="5" className="text-center text-muted">No grades available</td>
+                            </tr>
+                          );
+                        }
+                        const bySubject = {};
+                        filtered.forEach(g => {
+                          const key = g.subjectId || 'Subject';
+                          if (!bySubject[key]) bySubject[key] = { obtained: 0, total: 0 };
+                          bySubject[key].obtained += parseFloat(g.marks) || 0;
+                          bySubject[key].total += parseFloat(g.maxMarks) || 0;
+                        });
+                        return Object.entries(bySubject).map(([subjectId, vals]) => {
+                          const percentage = vals.total > 0 ? ((vals.obtained / vals.total) * 100).toFixed(2) : 0;
+                          const grade = calculateGrade(vals.obtained, vals.total);
+                          return (
+                            <tr key={subjectId}>
+                              <td className="fw-bold">{subjectId}</td>
+                              <td>{vals.obtained}</td>
+                              <td>{vals.total}</td>
+                              <td>{percentage}%</td>
+                              <td>
+                                <Badge bg={grade === 'A+' ? 'success' : grade === 'A' ? 'success' : grade === 'B' ? 'warning' : grade === 'C' ? 'warning' : 'danger'} className="badge-enhanced">{grade}</Badge>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      }
+                      if (childResults.grades && Object.keys(childResults.grades).length > 0) {
+                        return Object.entries(childResults.grades).map(([subject, gradeData]) => {
+                          const totalObtained = Object.values(gradeData).reduce((sum, g) => sum + (g.obtainedMarks || 0), 0);
+                          const totalMarks = Object.values(gradeData).reduce((sum, g) => sum + (g.totalMarks || 0), 0);
+                          const percentage = totalMarks > 0 ? ((totalObtained / totalMarks) * 100).toFixed(2) : 0;
+                          const grade = calculateGrade(totalObtained, totalMarks);
+                          return (
+                            <tr key={subject}>
+                              <td className="fw-bold">{subject}</td>
+                              <td>{totalObtained}</td>
+                              <td>{totalMarks}</td>
+                              <td>{percentage}%</td>
+                              <td>
+                                <Badge bg={grade === 'A+' ? 'success' : grade === 'A' ? 'success' : grade === 'B' ? 'warning' : grade === 'C' ? 'warning' : 'danger'} className="badge-enhanced">{grade}</Badge>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      }
+                      return (
+                        <tr>
+                          <td colSpan="5" className="text-center text-muted">No grades available</td>
+                        </tr>
+                      );
+                    })()}
                   </tbody>
                 </Table>
               </Card.Body>
