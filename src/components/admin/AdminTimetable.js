@@ -121,7 +121,7 @@ const AdminTimetable = () => {
           if (!placed) {
             schedule[cls.id][day][slot.id] = {
               subjectId: null,
-              subjectName: 'Free/Study',
+              subjectName: 'Break',
               teacherId: null,
             };
           }
@@ -237,7 +237,7 @@ const AdminTimetable = () => {
       // Clearing the slot
       nextSchedule[editDay][editSlotId] = {
         subjectId: null,
-        subjectName: 'Free/Study',
+        subjectName: 'Break',
         teacherId: null,
       };
     }
@@ -407,7 +407,7 @@ const AdminTimetable = () => {
           <Form.Group className="mb-3">
             <Form.Label>Subject</Form.Label>
             <Form.Select value={editSubjectId} onChange={(e) => setEditSubjectId(e.target.value)}>
-              <option value="">Free / Study Period</option>
+              <option value="">Break</option>
               {(subjectsByClass[selectedClassId] || []).map(sub => (
                 <option key={sub.id} value={sub.id}>{sub.name}</option>
               ))}
