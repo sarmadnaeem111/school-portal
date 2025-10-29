@@ -65,7 +65,7 @@ const ClassAttendance = () => {
       console.log('Submitting attendance for students:', students);
       const attendancePromises = students.map(student => {
         const attendanceData = {
-          studentId: student.uid, // Use student.uid instead of student.id
+          studentId: student.id,
           studentName: student.name,
           classId: selectedClass,
           className: classes.find(c => c.id === selectedClass)?.name,
@@ -76,7 +76,7 @@ const ClassAttendance = () => {
           time: new Date().toLocaleTimeString(),
           createdAt: new Date()
         };
-        console.log('Saving attendance for student:', student.name, 'with UID:', student.uid, 'data:', attendanceData);
+        console.log('Saving attendance for student:', student.name, 'with ID:', student.id, 'data:', attendanceData);
         return addDoc(collection(db, 'attendance'), attendanceData);
       });
 
