@@ -13,6 +13,7 @@ const AdminResults = () => {
   const [studentResults, setStudentResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
@@ -79,13 +80,17 @@ const AdminResults = () => {
         return;
       }
 
+      const termFilteredGrades = selectedTerm === 'all' 
+        ? grades 
+        : grades.filter(g => (g.term || '') === selectedTerm);
+
       // Get students for the selected class
       const classStudents = students.filter(student => student.classId === selectedClass);
 
       // Generate results for each student
       const results = classStudents.map(student => {
         try {
-          const studentGrades = grades.filter(grade => grade.studentId === student.id);
+          const studentGrades = termFilteredGrades.filter(grade => grade.studentId === student.id);
           const studentSubjects = subjects.filter(subject => subject.classId === selectedClass);
           
           const subjectResults = studentSubjects.map(subject => {
@@ -215,6 +220,7 @@ const AdminResults = () => {
   const printStudentResults = (studentResult) => {
     const printWindow = window.open('', '_blank');
     const currentDate = new Date().toLocaleDateString();
+    const termLabel = selectedTerm === 'all' ? 'All Terms' : (selectedTerm === 'first' ? 'First Term' : selectedTerm === 'second' ? 'Second Term' : 'Third Term');
     
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -315,6 +321,7 @@ const AdminResults = () => {
           <div class="school-name">${schoolProfile.schoolName || 'School Portal'}</div>
           <div>Student Academic Results</div>
           <div style="font-size: 14px; color: #6c757d;">Generated on: ${currentDate}</div>
+          <div style="font-size: 14px; color: #6c757d;">Term: ${termLabel}</div>
         </div>
 
         <div class="student-info">
@@ -386,6 +393,7 @@ const AdminResults = () => {
   const printAllResults = () => {
     const printWindow = window.open('', '_blank');
     const currentDate = new Date().toLocaleDateString();
+    const termLabel = selectedTerm === 'all' ? 'All Terms' : (selectedTerm === 'first' ? 'First Term' : selectedTerm === 'second' ? 'Second Term' : 'Third Term');
     
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -471,6 +479,7 @@ const AdminResults = () => {
           <div class="school-name">${schoolProfile.schoolName || 'School Portal'}</div>
           <div>Class Results - ${getClassName(selectedClass)}</div>
           <div style="font-size: 14px; color: #6c757d;">Generated on: ${currentDate}</div>
+          <div style="font-size: 14px; color: #6c757d;">Term: ${termLabel}</div>
         </div>
 
         ${filteredResults.map(result => `
@@ -554,7 +563,7 @@ const AdminResults = () => {
         </Alert>
       )}
 
-      {/* Class Selection and Search */}
+      {/* Class Selection, Term and Search */}
       <Row className="mb-4">
         <Col md={4}>
           <Form.Group>
@@ -570,6 +579,21 @@ const AdminResults = () => {
                   {getClassName(cls.id)}
                 </option>
               ))}
+            </Form.Select>
+          </Form.Group>
+        </Col>
+        <Col md={4}>
+          <Form.Group>
+            <Form.Label className="form-label-enhanced">Term</Form.Label>
+            <Form.Select
+              className="form-control-enhanced"
+              value={selectedTerm}
+              onChange={(e) => setSelectedTerm(e.target.value)}
+            >
+              <option value="all">All Terms</option>
+              <option value="first">First Term</option>
+              <option value="second">Second Term</option>
+              <option value="third">Third Term</option>
             </Form.Select>
           </Form.Group>
         </Col>
