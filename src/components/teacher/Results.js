@@ -13,6 +13,7 @@ const Results = () => {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedClass, setSelectedClass] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('all');
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [schoolProfile, setSchoolProfile] = useState({});
@@ -77,6 +78,10 @@ const Results = () => {
         return;
       }
 
+      const termFilteredGrades = selectedTerm === 'all' 
+        ? grades 
+        : grades.filter(g => (g.term || '') === selectedTerm);
+
       // Get students for the selected class
       const studentsQuery = query(
         collection(db, 'users'), 
@@ -91,7 +96,7 @@ const Results = () => {
         // Generate results for each student
         const results = studentsList.map(student => {
           try {
-            const studentGrades = grades.filter(grade => grade.studentId === student.id);
+            const studentGrades = termFilteredGrades.filter(grade => grade.studentId === student.id);
             const studentSubjects = subjects.filter(subject => subject.classId === selectedClass);
             
             const subjectResults = studentSubjects.map(subject => {
@@ -226,6 +231,9 @@ const Results = () => {
   const printStudentResults = (studentResult) => {
     const printWindow = window.open('', '_blank');
     const currentDate = new Date().toLocaleDateString();
+    const termLabel = selectedTerm === 'all' 
+      ? 'All Terms' 
+      : (selectedTerm === 'first' ? 'First Term' : selectedTerm === 'second' ? 'Second Term' : 'Third Term');
     
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -326,6 +334,7 @@ const Results = () => {
           <div class="school-name">${schoolProfile.schoolName || 'School Portal'}</div>
           <div>Student Academic Results</div>
           <div style="font-size: 14px; color: #6c757d;">Generated on: ${currentDate}</div>
+          <div style="font-size: 14px; color: #6c757d;">Term: ${termLabel}</div>
         </div>
 
         <div class="student-info">
@@ -407,9 +416,9 @@ const Results = () => {
         </Alert>
       )}
 
-      {/* Class Selection */}
+      {/* Class and Term Selection */}
       <Row className="mb-4">
-        <Col md={6}>
+        <Col md={5}>
           <Form.Group>
             <Form.Label>Select Class</Form.Label>
             <Form.Select
@@ -425,7 +434,21 @@ const Results = () => {
             </Form.Select>
           </Form.Group>
         </Col>
-        <Col md={6} className="d-flex align-items-end">
+        <Col md={4}>
+          <Form.Group>
+            <Form.Label>Term</Form.Label>
+            <Form.Select
+              value={selectedTerm}
+              onChange={(e) => setSelectedTerm(e.target.value)}
+            >
+              <option value="all">All Terms</option>
+              <option value="first">First Term</option>
+              <option value="second">Second Term</option>
+              <option value="third">Third Term</option>
+            </Form.Select>
+          </Form.Group>
+        </Col>
+        <Col md={3} className="d-flex align-items-end">
           <Button variant="primary" onClick={generateResults}>
             <i className="fas fa-sync-alt me-2"></i>
             Refresh Results
