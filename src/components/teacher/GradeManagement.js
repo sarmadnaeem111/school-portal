@@ -16,6 +16,7 @@ const GradeManagement = () => {
     studentId: '',
     subjectId: '',
     examType: '',
+    term: '',
     marks: '',
     maxMarks: '',
     remarks: ''
@@ -94,14 +95,14 @@ const GradeManagement = () => {
         await updateDoc(doc(db, 'grades', editingGrade.id), gradeData);
         setShowModal(false);
         setEditingGrade(null);
-        setFormData({ studentId: '', subjectId: '', examType: '', marks: '', maxMarks: '', remarks: '' });
+        setFormData({ studentId: '', subjectId: '', examType: '', term: '', marks: '', maxMarks: '', remarks: '' });
         fetchSubjectGrades();
         return;
       }
 
       // Start bulk entry flow: require subject, exam type, max marks
-      if (!formData.subjectId || !formData.examType || !formData.maxMarks) {
-        alert('Please select exam type and enter max marks.');
+      if (!formData.subjectId || !formData.examType || !formData.term || !formData.maxMarks) {
+        alert('Please select term, exam type and enter max marks.');
         return;
       }
 
@@ -137,6 +138,7 @@ const GradeManagement = () => {
         studentId: currentStudent.id,
         subjectId: formData.subjectId,
         examType: formData.examType,
+        term: formData.term,
         marks: formData.marks,
         maxMarks: formData.maxMarks,
         remarks: formData.remarks,
@@ -182,6 +184,7 @@ const GradeManagement = () => {
       studentId: grade.studentId,
       subjectId: grade.subjectId,
       examType: grade.examType,
+      term: grade.term || '',
       marks: grade.marks,
       maxMarks: grade.maxMarks,
       remarks: grade.remarks
@@ -249,6 +252,7 @@ const GradeManagement = () => {
               <thead>
                 <tr>
                   <th>Student Name</th>
+                  <th>Term</th>
                   <th>Exam Type</th>
                   <th>Marks</th>
                   <th>Percentage</th>
@@ -261,6 +265,7 @@ const GradeManagement = () => {
                 {grades.map(grade => (
                   <tr key={grade.id}>
                     <td>{getStudentName(grade.studentId)}</td>
+                    <td className="text-capitalize">{grade.term || '-'}</td>
                     <td>{grade.examType}</td>
                     <td>{grade.marks}/{grade.maxMarks}</td>
                     <td>
@@ -320,7 +325,7 @@ const GradeManagement = () => {
             </Form.Group>
 
             <Row>
-              <Col md={6}>
+              <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>Exam Type</Form.Label>
                   <Form.Select
@@ -338,7 +343,23 @@ const GradeManagement = () => {
                   </Form.Select>
                 </Form.Group>
               </Col>
-              <Col md={6}>
+              <Col md={4}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Term</Form.Label>
+                  <Form.Select
+                    value={formData.term}
+                    onChange={(e) => setFormData({...formData, term: e.target.value})}
+                    required
+                    disabled={bulkEntryActive}
+                  >
+                    <option value="">Select Term</option>
+                    <option value="first">First Term</option>
+                    <option value="second">Second Term</option>
+                    <option value="third">Third Term</option>
+                  </Form.Select>
+                </Form.Group>
+              </Col>
+              <Col md={4}>
                 <Form.Group className="mb-3">
                   <Form.Label>Max Marks</Form.Label>
                   <Form.Control
