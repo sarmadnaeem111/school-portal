@@ -32,13 +32,14 @@ const AttendanceReports = () => {
   const fetchAttendance = async () => {
     try {
       setLoading(true);
+      // Query by class only to avoid requiring a composite index; filter date in-memory
       const attendanceQuery = query(
         collection(db, 'attendance'),
-        where('classId', '==', selectedClass),
-        where('date', '==', selectedDate)
+        where('classId', '==', selectedClass)
       );
       const attendanceSnapshot = await getDocs(attendanceQuery);
-      setAttendance(attendanceSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      const list = attendanceSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAttendance(list.filter(r => r.date === selectedDate));
     } catch (error) {
       console.error('Error fetching attendance:', error);
     } finally {
