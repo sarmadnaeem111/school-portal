@@ -20,6 +20,7 @@ import AdminWhatsApp from './AdminWhatsApp';
 import AdminTimetable from './AdminTimetable';
 import TransportDashboard from '../transport/TransportDashboard';
 import LibraryDashboard from '../library/LibraryDashboard';
+import AccountsDashboard from '../accounts/AccountsDashboard';
 
 const AdminDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -127,6 +128,7 @@ const AdminDashboard = () => {
             <Route path="/school-profile" element={<SchoolProfile />} />
             <Route path="/fee-chalan" element={<FeeChalan />} />
             <Route path="/library" element={<LibraryDashboard />} />
+            <Route path="/accounts" element={<AccountsDashboard />} />
             <Route path="/transport" element={<TransportDashboard />} />
             <Route path="/" element={<AdminOverview />} />
           </Routes>
