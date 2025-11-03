@@ -18,6 +18,7 @@ import SchoolProfile from './SchoolProfile';
 import FeeChalan from './FeeChalan';
 import AdminWhatsApp from './AdminWhatsApp';
 import AdminTimetable from './AdminTimetable';
+import TransportDashboard from '../transport/TransportDashboard';
 
 const AdminDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -124,6 +125,7 @@ const AdminDashboard = () => {
             <Route path="/results" element={<AdminResults />} />
             <Route path="/school-profile" element={<SchoolProfile />} />
             <Route path="/fee-chalan" element={<FeeChalan />} />
+            <Route path="/transport" element={<TransportDashboard />} />
             <Route path="/" element={<AdminOverview />} />
           </Routes>
         </div>
