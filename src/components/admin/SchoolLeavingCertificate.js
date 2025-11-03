@@ -943,6 +943,9 @@ const SchoolLeavingCertificate = () => {
         .info-row:last-child { border-bottom:none; }
         .info-label { color:#2c3e50; font-weight:bold; min-width:180px; flex:0 0 180px; }
         .info-value { color:#34495e; flex:1; text-align:right; padding-left:10px; }
+        .academic-details { background:#f8f9fa; padding:12px; border-radius:6px; margin:10px 0; border:1px solid #dee2e6; }
+        .academic-details h4 { color:#2c3e50; margin-bottom:8px; text-align:center; font-size:14px; }
+        .subjects-list { margin:5px 0; padding:6px; background:#fff; border-radius:4px; border:1px solid #e9ecef; font-size:12px; }
         .signatures { display:flex; justify-content:space-between; margin-top:20px; padding-top:15px; border-top:2px solid #2c3e50; }
         .signature-box { text-align:center; width:200px; }
         .signature-line { border-bottom:1px solid #000; margin-bottom:4px; height:30px; }
@@ -973,6 +976,25 @@ const SchoolLeavingCertificate = () => {
           <div class="info-row"><span class="info-label">Class:</span><span class="info-value">${data.className || ''}</span></div>
           <div class="info-row"><span class="info-label">Academic Year:</span><span class="info-value">${data.academicYear || ''}</span></div>
         </div>
+        <div class="academic-details">
+          <h4>Academic Performance</h4>
+          <div class="info-row"><span class="info-label">Last Exam Passed:</span><span class="info-value">${data.lastExamPassed || ''} ${data.examYear ? '(' + data.examYear + ')' : ''}</span></div>
+          <div class="info-row"><span class="info-label">Exam Board:</span><span class="info-value">${data.examBoard || ''}</span></div>
+          <div class="info-row"><span class="info-label">Overall Grade:</span><span class="info-value">${data.overallGrade || ''}</span></div>
+          <div class="info-row"><span class="info-label">Conduct:</span><span class="info-value">${data.conduct || ''}</span></div>
+          <div class="info-row"><span class="info-label">Attendance:</span><span class="info-value">${data.attendance || ''}</span></div>
+          ${data.subjectsStudied ? `<div class="subjects-list"><strong>Subjects Studied:</strong><br>${data.subjectsStudied}</div>` : ''}
+        </div>
+
+        <p style="text-align: justify; margin: 10px 0; font-size: 13px;">
+          The above-named student was a bonafide student of this institution from 
+          <strong>${data.admissionDate || ''}</strong> to <strong>${data.leavingDate || ''}</strong> 
+          and has completed the course of study satisfactorily. The student's conduct during the period of study was 
+          <strong>${data.conduct || ''}</strong> and attendance was <strong>${data.attendance || ''}</strong>.
+        </p>
+
+        ${data.reasonForLeaving ? `<p style="text-align: justify; margin: 10px 0; font-size: 13px;"><strong>Reason for Leaving:</strong> ${data.reasonForLeaving}</p>` : ''}
+        ${data.remarks ? `<p style="text-align: justify; margin: 10px 0; font-size: 13px;"><strong>Remarks:</strong> ${data.remarks}</p>` : ''}
         <div class="date-section">
           <p>Date: ${data.leavingDate || new Date().toLocaleDateString()}</p>
           <p>Place: ${(data.schoolAddress || '').split(',')[0]}</p>
