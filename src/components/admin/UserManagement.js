@@ -277,6 +277,14 @@ const UserManagement = () => {
             role="accounts"
           />
         </Tab>
+        <Tab eventKey="hostel" title={`Hostel (${getUsersByRole('hostel').length})`}>
+          <UserTable 
+            users={getUsersByRole('hostel')} 
+            onEdit={handleEdit} 
+            onDelete={handleDelete}
+            role="hostel"
+          />
+        </Tab>
       </Tabs>
 
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
@@ -333,6 +341,7 @@ const UserManagement = () => {
                     <option value="parent">Parent</option>
                     <option value="transport">Transport</option>
                     <option value="accounts">Accounts</option>
+                    <option value="hostel">Hostel</option>
                   </Form.Select>
                 </Form.Group>
               </Col>
