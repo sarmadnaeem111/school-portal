@@ -78,6 +78,12 @@ const AdminSidebar = ({ onClose, handleLogout }) => {
             Dashboard
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/admin/transport" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-bus me-2"></i>
+            Transport
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/admin/users" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-users me-2"></i>
