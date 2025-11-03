@@ -21,7 +21,7 @@ const ClassAttendance = () => {
     if (selectedClass) {
       fetchClassStudents();
     }
-  }, [selectedClass]);
+  }, [selectedClass, attendanceDate]);
 
   const fetchTeacherClasses = async () => {
     try {
@@ -42,10 +42,27 @@ const ClassAttendance = () => {
       const studentsList = studentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setStudents(studentsList);
       
-      // Initialize attendance records
+      // Fetch existing attendance for this class/date and pre-fill
+      const existingQuery = query(collection(db, 'attendance'), where('classId', '==', selectedClass));
+      const existingSnap = await getDocs(existingQuery);
+      const existingList = existingSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(r => r.date === attendanceDate);
+
+      // Build map of latest status per student for the selected date
+      const latestByStudent = {};
+      existingList.forEach(r => {
+        const ts = r.createdAt && typeof r.createdAt.toMillis === 'function' ? r.createdAt.toMillis() : (r.createdAt ? new Date(r.createdAt).getTime() : 0);
+        const current = latestByStudent[r.studentId];
+        if (!current || ts > current._ts) {
+          latestByStudent[r.studentId] = { status: r.status, _ts: ts };
+        }
+      });
+
+      // Initialize attendance records using last marked status or default 'present'
       const initialRecords = {};
       studentsList.forEach(student => {
-        initialRecords[student.id] = 'present';
+        initialRecords[student.id] = latestByStudent[student.id]?.status || 'present';
       });
       setAttendanceRecords(initialRecords);
     } catch (error) {
