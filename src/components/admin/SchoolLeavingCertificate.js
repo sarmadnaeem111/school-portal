@@ -928,6 +928,80 @@ const SchoolLeavingCertificate = () => {
     }
   };
 
+  const printSLCFromData = (data) => {
+    try {
+      const html = `<!DOCTYPE html><html><head><title>School Leaving Certificate - ${data.studentName || ''}</title>
+      <style>
+        body { font-family: 'Times New Roman', serif; margin:0; padding:0; background:#fff; color:#000; }
+        .certificate-container { width:100%; min-height:100vh; border:4px solid #2c3e50; padding:15px; background:linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); box-sizing:border-box; position:relative; }
+        .certificate-header { text-align:center; margin-bottom:15px; border-bottom:2px solid #2c3e50; padding-bottom:10px; }
+        .school-name { font-size:24px; font-weight:bold; color:#2c3e50; margin-bottom:5px; text-transform:uppercase; letter-spacing:2px; }
+        .school-address { font-size:12px; color:#7f8c8d; margin-bottom:3px; }
+        .certificate-title { font-size:20px; font-weight:bold; color:#34495e; margin:10px 0; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:5px; }
+        .student-info { background:#ecf0f1; padding:15px; border-radius:8px; margin:15px 0; border-left:4px solid #3498db; box-shadow:0 1px 3px rgba(0,0,0,0.1); }
+        .info-row { display:flex; justify-content:space-between; margin-bottom:4px; font-weight:bold; padding:1px 0; border-bottom:1px solid #bdc3c7; font-size:12px; }
+        .info-row:last-child { border-bottom:none; }
+        .info-label { color:#2c3e50; font-weight:bold; min-width:180px; flex:0 0 180px; }
+        .info-value { color:#34495e; flex:1; text-align:right; padding-left:10px; }
+        .signatures { display:flex; justify-content:space-between; margin-top:20px; padding-top:15px; border-top:2px solid #2c3e50; }
+        .signature-box { text-align:center; width:200px; }
+        .signature-line { border-bottom:1px solid #000; margin-bottom:4px; height:30px; }
+        .signature-label { font-weight:bold; font-size:12px; color:#2c3e50; }
+        .date-section { text-align:right; margin-top:15px; font-weight:bold; font-size:12px; }
+        .seal { position:absolute; top:15px; right:15px; width:60px; height:60px; border:2px solid #e74c3c; border-radius:50%; display:flex; align-items:center; justify-content:center; background:#fff; font-weight:bold; color:#e74c3c; font-size:10px; text-align:center; box-shadow:0 1px 5px rgba(0,0,0,0.2); }
+        .certificate-number { position:absolute; top:10px; left:10px; font-size:10px; color:#7f8c8d; font-weight:bold; }
+        @media print { @page { margin: 0.3in 0.1in; size: A4; } }
+      </style></head><body>
+      <div class="certificate-container">
+        <div class="seal">SCHOOL<br>SEAL</div>
+        <div class="certificate-number">Certificate No: SLC-${Date.now().toString().slice(-6)}</div>
+        <div class="certificate-header">
+          <div class="school-name">${data.schoolName || 'School Portal'}</div>
+          <div class="school-address">${data.schoolAddress || ''}</div>
+          <div class="school-address">Phone: ${data.schoolPhone || ''} | Email: ${data.schoolEmail || ''}</div>
+          <div class="certificate-title">SCHOOL LEAVING CERTIFICATE</div>
+        </div>
+        <div class="student-info">
+          <div class="info-row"><span class="info-label">Student Name:</span><span class="info-value">${data.studentName || ''}</span></div>
+          <div class="info-row"><span class="info-label">Roll Number:</span><span class="info-value">${data.rollNumber || ''}</span></div>
+          <div class="info-row"><span class="info-label">Father's Name:</span><span class="info-value">${data.fatherName || ''}</span></div>
+          <div class="info-row"><span class="info-label">Mother's Name:</span><span class="info-value">${data.motherName || ''}</span></div>
+          <div class="info-row"><span class="info-label">Date of Birth:</span><span class="info-value">${data.dateOfBirth || ''}</span></div>
+          <div class="info-row"><span class="info-label">Place of Birth:</span><span class="info-value">${data.placeOfBirth || ''}</span></div>
+          <div class="info-row"><span class="info-label">Admission Number:</span><span class="info-value">${data.admissionNumber || ''}</span></div>
+          <div class="info-row"><span class="info-label">Admission Date:</span><span class="info-value">${data.admissionDate || ''}</span></div>
+          <div class="info-row"><span class="info-label">Class:</span><span class="info-value">${data.className || ''}</span></div>
+          <div class="info-row"><span class="info-label">Academic Year:</span><span class="info-value">${data.academicYear || ''}</span></div>
+        </div>
+        <div class="date-section">
+          <p>Date: ${data.leavingDate || new Date().toLocaleDateString()}</p>
+          <p>Place: ${(data.schoolAddress || '').split(',')[0]}</p>
+        </div>
+        <div class="signatures">
+          <div class="signature-box"><div class="signature-line"></div><div class="signature-label">Class Teacher</div></div>
+          <div class="signature-box"><div class="signature-line"></div><div class="signature-label">Principal</div></div>
+        </div>
+      </div>
+      </body></html>`;
+
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+      iframe.onload = () => {
+        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch (e) {}
+        setTimeout(() => { try { document.body.removeChild(iframe); } catch (_) {} }, 1000);
+      };
+      iframe.srcdoc = html;
+    } catch (e) {
+      console.error('Failed to print SLC:', e);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -1389,6 +1463,15 @@ const SchoolLeavingCertificate = () => {
                       >
                         <i className="fas fa-edit me-1"></i>
                         Edit
+                      </Button>
+                      <Button 
+                        variant="outline-success" 
+                        size="sm" 
+                        onClick={() => printSLCFromData(certificate)}
+                        className="me-2"
+                      >
+                        <i className="fas fa-print me-1"></i>
+                        Print
                       </Button>
                       <Button 
                         variant="outline-danger" 
