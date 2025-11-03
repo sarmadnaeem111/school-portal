@@ -389,7 +389,7 @@ const AdminResults = () => {
     }, 500);
   };
 
-  // Print all results for the class
+  // Print all results for the class - each student on a separate printed page
   const printAllResults = () => {
     const printWindow = window.open('', '_blank');
     const currentDate = new Date().toLocaleDateString();
@@ -405,6 +405,13 @@ const AdminResults = () => {
             font-family: Arial, sans-serif;
             margin: 20px;
             color: #333;
+          }
+          .page {
+            page-break-after: always;
+            break-after: page;
+          }
+          .page:last-child {
+            page-break-after: auto;
           }
           .header {
             text-align: center;
@@ -475,52 +482,55 @@ const AdminResults = () => {
         </style>
       </head>
       <body>
-        <div class="header">
-          <div class="school-name">${schoolProfile.schoolName || 'School Portal'}</div>
-          <div>Class Results - ${getClassName(selectedClass)}</div>
-          <div style="font-size: 14px; color: #6c757d;">Generated on: ${currentDate}</div>
-          <div style="font-size: 14px; color: #6c757d;">Term: ${termLabel}</div>
-        </div>
-
         ${filteredResults.map(result => `
-          <div class="student-card">
-            <div class="student-header">
-              <div class="student-name">${result.studentName} (${result.rollNumber})</div>
-              <div>Overall: <span class="overall-grade">${result.overallGrade} (${safeToFixed(result.overallPercentage, 1)}%)</span> - 
-                   Marks: ${safeToFixed(result.overallObtained, 0)} / ${safeToFixed(result.overallTotal, 0)}</div>
+          <div class="page">
+            <div class="header">
+              <div class="school-name">${schoolProfile.schoolName || 'School Portal'}</div>
+              <div>Student Academic Results</div>
+              <div style="font-size: 14px; color: #6c757d;">Generated on: ${currentDate}</div>
+              <div style="font-size: 14px; color: #6c757d;">Term: ${termLabel}</div>
             </div>
-            
-            <table>
-              <thead>
-                <tr>
-                  <th>Subject</th>
-                  <th>Code</th>
-                  <th>Marks</th>
-                  <th>Percentage</th>
-                  <th>Grade</th>
-                  <th>Exams</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${result.subjectResults.map(subject => `
+
+            <div class="student-card">
+              <div class="student-header">
+                <div class="student-name">${result.studentName} (${result.rollNumber})</div>
+                <div>Class: ${getClassName(selectedClass)}</div>
+                <div>Overall: <span class="overall-grade">${result.overallGrade} (${safeToFixed(result.overallPercentage, 1)}%)</span> - 
+                     Marks: ${safeToFixed(result.overallObtained, 0)} / ${safeToFixed(result.overallTotal, 0)}</div>
+              </div>
+
+              <table>
+                <thead>
                   <tr>
-                    <td>${subject.subjectName}</td>
-                    <td>${subject.subjectCode}</td>
-                    <td>${subject.totalMarks > 0 ? safeToFixed(subject.obtainedMarks, 0) + ' / ' + safeToFixed(subject.totalMarks, 0) : 'N/A'}</td>
-                    <td>${subject.totalMarks > 0 ? safeToFixed(subject.percentage, 1) + '%' : 'N/A'}</td>
-                    <td><span class="grade-badge grade-${subject.grade.charAt(0)}">${subject.grade}</span></td>
-                    <td>${subject.examCount}</td>
+                    <th>Subject</th>
+                    <th>Code</th>
+                    <th>Marks</th>
+                    <th>Percentage</th>
+                    <th>Grade</th>
+                    <th>Exams</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  ${result.subjectResults.map(subject => `
+                    <tr>
+                      <td>${subject.subjectName}</td>
+                      <td>${subject.subjectCode}</td>
+                      <td>${subject.totalMarks > 0 ? safeToFixed(subject.obtainedMarks, 0) + ' / ' + safeToFixed(subject.totalMarks, 0) : 'N/A'}</td>
+                      <td>${subject.totalMarks > 0 ? safeToFixed(subject.percentage, 1) + '%' : 'N/A'}</td>
+                      <td><span class="grade-badge grade-${subject.grade.charAt(0)}">${subject.grade}</span></td>
+                      <td>${subject.examCount}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+
+              <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #dee2e6; color: #6c757d;">
+                <p>This is a computer-generated report. No signature is required.</p>
+                <p>For any queries, please contact the school administration.</p>
+              </div>
+            </div>
           </div>
         `).join('')}
-
-        <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d;">
-          <p>This is a computer-generated report. No signature is required.</p>
-          <p>For any queries, please contact the school administration.</p>
-        </div>
       </body>
       </html>
     `);
