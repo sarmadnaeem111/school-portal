@@ -23,7 +23,8 @@ const UserManagement = () => {
     classId: '',
     parentId: '',
     rollNumber: '',
-    gender: ''
+    gender: '',
+    status: 'active'
   });
 
   useEffect(() => {
@@ -132,6 +133,7 @@ const UserManagement = () => {
           parentId: processedUserData.parentId || '',
           rollNumber: formData.rollNumber || '',
           gender: formData.gender || '',
+          status: formData.status || 'active',
           createdAt: new Date()
         };
         
@@ -159,7 +161,8 @@ const UserManagement = () => {
         classId: '',
         parentId: '',
         rollNumber: '',
-        gender: ''
+        gender: '',
+        status: 'active'
       });
       fetchUsers();
       
@@ -191,7 +194,8 @@ const UserManagement = () => {
       classId: user.classId || '',
       parentId: user.parentId || '',
       rollNumber: user.rollNumber || '',
-      gender: user.gender || ''
+      gender: user.gender || '',
+      status: user.status || 'active'
     });
     setShowModal(true);
   };
@@ -209,6 +213,16 @@ const UserManagement = () => {
 
   const getUsersByRole = (role) => {
     return users.filter(user => user.role === role);
+  };
+
+  const handleSetStatus = async (userId, status) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), { status });
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update status');
+    }
   };
 
   if (loading) {
@@ -232,6 +246,7 @@ const UserManagement = () => {
             onDelete={handleDelete}
             role="student"
             getClassName={getClassName}
+            onSetStatus={handleSetStatus}
           />
         </Tab>
         <Tab eventKey="teachers" title={`Teachers (${getUsersByRole('teacher').length})`}>
@@ -463,7 +478,7 @@ const UserManagement = () => {
   );
 };
 
-const UserTable = ({ users, onEdit, onDelete, role, getClassName }) => {
+const UserTable = ({ users, onEdit, onDelete, role, getClassName, onSetStatus }) => {
   return (
     <Table striped bordered hover>
       <thead>
@@ -475,6 +490,7 @@ const UserTable = ({ users, onEdit, onDelete, role, getClassName }) => {
           <th>Address</th>
           {role === 'student' && <th>Roll Number</th>}
           {role === 'student' && <th>Class</th>}
+          {role === 'student' && <th>Status</th>}
           <th>Actions</th>
         </tr>
       </thead>
@@ -488,6 +504,7 @@ const UserTable = ({ users, onEdit, onDelete, role, getClassName }) => {
             <td>{user.address}</td>
             {role === 'student' && <td>{user.rollNumber || 'N/A'}</td>}
             {role === 'student' && <td>{getClassName ? getClassName(user.classId) : (user.classId || 'N/A')}</td>}
+            {role === 'student' && <td>{user.status || 'active'}</td>}
             <td>
               <Button variant="outline-primary" size="sm" onClick={() => onEdit(user)}>
                 Edit
@@ -495,6 +512,26 @@ const UserTable = ({ users, onEdit, onDelete, role, getClassName }) => {
               <Button variant="outline-danger" size="sm" onClick={() => onDelete(user.id)} className="ms-2">
                 Delete
               </Button>
+              {role === 'student' && user.status !== 'stuck off' && (
+                <Button 
+                  variant="outline-warning" 
+                  size="sm" 
+                  className="ms-2"
+                  onClick={() => onSetStatus && onSetStatus(user.id, 'stuck off')}
+                >
+                  Stuck Off
+                </Button>
+              )}
+              {role === 'student' && user.status === 'stuck off' && (
+                <Button 
+                  variant="outline-success" 
+                  size="sm" 
+                  className="ms-2"
+                  onClick={() => onSetStatus && onSetStatus(user.id, 'active')}
+                >
+                  Activate
+                </Button>
+              )}
             </td>
           </tr>
         ))}
