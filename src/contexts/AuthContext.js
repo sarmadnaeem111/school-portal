@@ -75,18 +75,8 @@ export const AuthProvider = ({ children }) => {
         displayName: sanitizedData.name
       });
 
-      // Convert parent email to UID if provided
+      // Keep parent email as provided (do not resolve to UID)
       let processedUserData = { ...sanitizedData };
-      if (sanitizedData.role === 'student' && sanitizedData.parentId) {
-        try {
-          const parentUid = await getParentUidFromEmail(sanitizedData.parentId);
-          processedUserData.parentId = parentUid;
-        } catch (error) {
-          // Reset rate limit on error
-          rateLimiter.reset(rateKey);
-          throw new Error('Parent lookup failed. Please verify the parent email.');
-        }
-      }
 
       // Save user data to Firestore
       const userDocData = {
