@@ -13,7 +13,7 @@ const gradientHeader = {
 };
 
 const AccountsDashboard = () => {
-  const { logout } = useAuth();
+  const { logout, userRole } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -112,9 +112,14 @@ const AccountsDashboard = () => {
     if ((t.type || 'income') === 'income') acc.income += Number(t.amount) || 0; else acc.expense += Number(t.amount) || 0; return acc;
   }, { income: 0, expense: 0 });
 
+  const isAdminView = userRole === 'admin';
+
   return (
     <div className="d-flex min-vh-100">
-      <div className="sidebar-overlay" onClick={() => { const s=document.querySelector('.sidebar-enhanced'); const o=document.querySelector('.sidebar-overlay'); if (s&&o){s.classList.remove('show'); o.classList.remove('show');}}}></div>
+      {!isAdminView && (
+        <div className="sidebar-overlay" onClick={() => { const s=document.querySelector('.sidebar-enhanced'); const o=document.querySelector('.sidebar-overlay'); if (s&&o){s.classList.remove('show'); o.classList.remove('show');}}}></div>
+      )}
+      {!isAdminView && (
       <ModuleSidebar
         title="Accounts"
         onLogout={handleLogout}
@@ -124,7 +129,7 @@ const AccountsDashboard = () => {
           { key: 'invoices', label: 'Invoices', icon: 'fas fa-file-invoice-dollar', onClick: () => setActiveTab('invoices') },
           { key: 'reports', label: 'Reports', icon: 'fas fa-chart-line', onClick: () => setActiveTab('reports') }
         ]}
-      />
+      />)}
       <div className="flex-grow-1 d-flex flex-column container-enhanced">
         <div className="mb-4">
           <h2 className="mb-1" style={{ background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
