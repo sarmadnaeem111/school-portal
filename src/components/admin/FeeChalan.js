@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Form, Button, Table, Badge, Alert, Spinner, Modal, Tabs, Tab } from 'react-bootstrap';
-import { collection, getDocs, query, where, doc, getDoc, addDoc, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, doc, getDoc, addDoc, orderBy, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
 const FeeChalan = () => {
@@ -15,6 +15,16 @@ const FeeChalan = () => {
   const [showManualForm, setShowManualForm] = useState(false);
   const [savedChalans, setSavedChalans] = useState([]);
   const [activeTab, setActiveTab] = useState('generate');
+  const [classFeeAmounts, setClassFeeAmounts] = useState({}); // { classId: { monthlyTuition, examinationFee, ... } }
+  const [editingClassFee, setEditingClassFee] = useState(null); // Currently editing class fee
+  const [feeAmountForm, setFeeAmountForm] = useState({
+    monthlyTuition: 5000,
+    examinationFee: 2000,
+    libraryFee: 500,
+    sportsFee: 1000,
+    transportFee: 3000,
+    otherFees: 0
+  });
   const [feeData, setFeeData] = useState({
     monthlyTuition: 5000,
     examinationFee: 2000,
@@ -33,6 +43,7 @@ const FeeChalan = () => {
     fetchClasses();
     fetchSchoolProfile();
     fetchSavedChalans();
+    fetchClassFeeAmounts();
   }, []);
 
   useEffect(() => {
@@ -96,6 +107,105 @@ const FeeChalan = () => {
     }
   };
 
+  const fetchClassFeeAmounts = async () => {
+    try {
+      const feeAmountsRef = collection(db, 'classFeeAmounts');
+      const feeAmountsSnapshot = await getDocs(feeAmountsRef);
+      const amountsMap = {};
+      feeAmountsSnapshot.docs.forEach(doc => {
+        amountsMap[doc.data().classId] = { id: doc.id, ...doc.data() };
+      });
+      setClassFeeAmounts(amountsMap);
+    } catch (error) {
+      console.error('Error fetching class fee amounts:', error);
+    }
+  };
+
+  const saveClassFeeAmount = async (classId) => {
+    try {
+      setLoading(true);
+      const feeAmountData = {
+        classId: classId,
+        monthlyTuition: feeAmountForm.monthlyTuition || 0,
+        examinationFee: feeAmountForm.examinationFee || 0,
+        libraryFee: feeAmountForm.libraryFee || 0,
+        sportsFee: feeAmountForm.sportsFee || 0,
+        transportFee: feeAmountForm.transportFee || 0,
+        otherFees: feeAmountForm.otherFees || 0,
+        updatedAt: new Date()
+      };
+
+      // Use setDoc with merge to update or create
+      const feeAmountRef = doc(db, 'classFeeAmounts', classId);
+      await setDoc(feeAmountRef, feeAmountData, { merge: true });
+
+      // Update local state
+      setClassFeeAmounts(prev => ({
+        ...prev,
+        [classId]: { id: classId, ...feeAmountData }
+      }));
+
+      setEditingClassFee(null);
+      setMessage(`Fee amounts saved successfully for ${getClassName(classId)}`);
+      setMessageType('success');
+    } catch (error) {
+      console.error('Error saving class fee amount:', error);
+      setMessage('Error saving fee amounts. Please try again.');
+      setMessageType('danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openFeeAmountEditor = (classId) => {
+    const existingFee = classFeeAmounts[classId];
+    if (existingFee) {
+      setFeeAmountForm({
+        monthlyTuition: existingFee.monthlyTuition || 5000,
+        examinationFee: existingFee.examinationFee || 2000,
+        libraryFee: existingFee.libraryFee || 500,
+        sportsFee: existingFee.sportsFee || 1000,
+        transportFee: existingFee.transportFee || 3000,
+        otherFees: existingFee.otherFees || 0
+      });
+    } else {
+      setFeeAmountForm({
+        monthlyTuition: 5000,
+        examinationFee: 2000,
+        libraryFee: 500,
+        sportsFee: 1000,
+        transportFee: 3000,
+        otherFees: 0
+      });
+    }
+    setEditingClassFee(classId);
+  };
+
+  const getClassFeeAmounts = (classId) => {
+    const savedAmounts = classFeeAmounts[classId];
+    if (savedAmounts) {
+      // Use nullish coalescing (??) instead of || to preserve 0 values
+      // Only fall back to defaults if value is null or undefined, not if it's 0
+      return {
+        monthlyTuition: savedAmounts.monthlyTuition ?? 5000,
+        examinationFee: savedAmounts.examinationFee ?? 2000,
+        libraryFee: savedAmounts.libraryFee ?? 500,
+        sportsFee: savedAmounts.sportsFee ?? 1000,
+        transportFee: savedAmounts.transportFee ?? 3000,
+        otherFees: savedAmounts.otherFees ?? 0
+      };
+    }
+    // Return default if no saved amounts
+    return {
+      monthlyTuition: 5000,
+      examinationFee: 2000,
+      libraryFee: 500,
+      sportsFee: 1000,
+      transportFee: 3000,
+      otherFees: 0
+    };
+  };
+
   const getClassName = (classId) => {
     const classData = classes.find(cls => cls.id === classId);
     if (classData) {
@@ -123,27 +233,32 @@ const FeeChalan = () => {
 
   const saveFeeChalan = async (student, feeData) => {
     try {
+      // Ensure all values are defined (no undefined values for Firestore)
       const chalanData = {
-        studentId: student.id,
-        studentName: student.name,
-        studentRollNumber: student.rollNumber,
-        classId: student.classId,
-        className: getClassName(student.classId),
-        chalanNumber: feeData.chalanNumber,
-        academicYear: feeData.academicYear,
-        dueDate: feeData.dueDate,
+        studentId: student.id || '',
+        studentName: student.name || '',
+        studentRollNumber: student.rollNumber || null,
+        classId: student.classId || '',
+        className: getClassName(student.classId) || '',
+        chalanNumber: feeData.chalanNumber || '',
+        academicYear: feeData.academicYear || '2024-2025',
+        dueDate: feeData.dueDate || null,
         fees: {
-          monthlyTuition: feeData.monthlyTuition,
-          examinationFee: feeData.examinationFee,
-          libraryFee: feeData.libraryFee,
-          sportsFee: feeData.sportsFee,
-          transportFee: feeData.transportFee,
-          otherFees: feeData.otherFees,
-          otherFeeDescription: feeData.otherFeeDescription,
-          totalAmount: feeData.monthlyTuition + feeData.examinationFee + feeData.libraryFee + 
-                      feeData.sportsFee + feeData.transportFee + feeData.otherFees
+          monthlyTuition: Number(feeData.monthlyTuition) || 0,
+          examinationFee: Number(feeData.examinationFee) || 0,
+          libraryFee: Number(feeData.libraryFee) || 0,
+          sportsFee: Number(feeData.sportsFee) || 0,
+          transportFee: Number(feeData.transportFee) || 0,
+          otherFees: Number(feeData.otherFees) || 0,
+          otherFeeDescription: feeData.otherFeeDescription || null,
+          totalAmount: (Number(feeData.monthlyTuition) || 0) + 
+                      (Number(feeData.examinationFee) || 0) + 
+                      (Number(feeData.libraryFee) || 0) + 
+                      (Number(feeData.sportsFee) || 0) + 
+                      (Number(feeData.transportFee) || 0) + 
+                      (Number(feeData.otherFees) || 0)
         },
-        remarks: feeData.remarks,
+        remarks: feeData.remarks || null,
         status: 'pending',
         createdAt: new Date(),
         createdBy: 'admin'
@@ -165,7 +280,32 @@ const FeeChalan = () => {
       day: 'numeric'
     });
 
-    const fees = customFeeData || feeData;
+    // Use class-specific fee amounts if available, otherwise use custom or default
+    let fees;
+    if (customFeeData) {
+      fees = customFeeData;
+    } else {
+      // Get class-specific fee amounts from configuration
+      const classFees = getClassFeeAmounts(student.classId);
+      
+      // Build fees object: use class fees for amounts, keep other fields from feeData
+      fees = {
+        // Use class fee amounts (these take priority)
+        monthlyTuition: classFees.monthlyTuition,
+        examinationFee: classFees.examinationFee,
+        libraryFee: classFees.libraryFee,
+        sportsFee: classFees.sportsFee,
+        transportFee: classFees.transportFee,
+        otherFees: classFees.otherFees,
+        // Keep other fields from feeData
+        otherFeeDescription: feeData.otherFeeDescription || null,
+        remarks: feeData.remarks || null,
+        // Ensure required fields are set
+        chalanNumber: feeData.chalanNumber || `CH-${Date.now().toString().slice(-6)}`,
+        academicYear: feeData.academicYear || '2024-2025',
+        dueDate: feeData.dueDate || new Date().toISOString().split('T')[0]
+      };
+    }
     const totalAmount = fees.monthlyTuition + fees.examinationFee + fees.libraryFee + 
                        fees.sportsFee + fees.transportFee + fees.otherFees;
 
@@ -542,6 +682,85 @@ const FeeChalan = () => {
       console.error('Error in bulk chalan generation:', error);
       setMessage('Error generating fee chalans. Please try again.');
       setMessageType('danger');
+    }
+  };
+
+  const generateAllStudentsFeeChalans = async () => {
+    setLoading(true);
+    try {
+      // Fetch all students across all classes
+      const allStudentsQuery = query(collection(db, 'users'), where('role', '==', 'student'));
+      const allStudentsSnapshot = await getDocs(allStudentsQuery);
+      const allStudentsList = allStudentsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      if (allStudentsList.length === 0) {
+        setMessage('No students found in the system');
+        setMessageType('warning');
+        setLoading(false);
+        return;
+      }
+
+      // Check if fee amounts are configured for all classes
+      const studentsWithoutFeeConfig = allStudentsList.filter(student => {
+        return !classFeeAmounts[student.classId];
+      });
+
+      if (studentsWithoutFeeConfig.length > 0) {
+        const uniqueClassesWithoutConfig = [...new Set(studentsWithoutFeeConfig.map(s => s.classId))];
+        const classesNames = uniqueClassesWithoutConfig.map(cid => getClassName(cid)).join(', ');
+        const confirmed = window.confirm(
+          `Warning: ${studentsWithoutFeeConfig.length} students from ${uniqueClassesWithoutConfig.length} class(es) do not have fee amounts configured. ` +
+          `Classes: ${classesNames}\n\n` +
+          `These students will use default fee amounts. Do you want to continue?`
+        );
+        if (!confirmed) {
+          setLoading(false);
+          return;
+        }
+      }
+
+      setMessage(`Starting fee chalan generation for ${allStudentsList.length} students...`);
+      setMessageType('info');
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Generate chalans for all students with delay between each
+      for (let i = 0; i < allStudentsList.length; i++) {
+        const student = allStudentsList[i];
+        setTimeout(async () => {
+          try {
+            await generateFeeChalan(student); // This will use class-specific fee amounts from getClassFeeAmounts
+            successCount++;
+            
+            // Update message periodically
+            if ((successCount + errorCount) % 10 === 0 || (successCount + errorCount) === allStudentsList.length) {
+              setMessage(`Generating... ${successCount + errorCount}/${allStudentsList.length} completed (${successCount} successful, ${errorCount} errors)`);
+            }
+          } catch (error) {
+            console.error(`Error generating chalan for ${student.name} (${getClassName(student.classId)}):`, error);
+            errorCount++;
+            
+            if ((successCount + errorCount) % 10 === 0 || (successCount + errorCount) === allStudentsList.length) {
+              setMessage(`Generating... ${successCount + errorCount}/${allStudentsList.length} completed (${successCount} successful, ${errorCount} errors)`);
+            }
+          }
+
+          // Final message when all are done
+          if (successCount + errorCount === allStudentsList.length) {
+            setMessage(`Fee chalans generation completed! ${successCount} successful, ${errorCount} errors`);
+            setMessageType(successCount > 0 ? 'success' : 'danger');
+            setLoading(false);
+            await fetchSavedChalans(); // Refresh saved chalans list
+          }
+        }, i * 1500); // Delay each by 1.5 seconds to avoid overwhelming the system
+      }
+
+    } catch (error) {
+      console.error('Error in generating fee chalans for all students:', error);
+      setMessage('Error generating fee chalans. Please try again.');
+      setMessageType('danger');
+      setLoading(false);
     }
   };
 
@@ -1024,33 +1243,35 @@ const FeeChalan = () => {
                 }}>
                   <h5 className="mb-0">
                     <i className="fas fa-info-circle me-2"></i>
-                    Fee Chalan Features
+                    Bulk Fee Chalan Generation
                   </h5>
                 </Card.Header>
                 <Card.Body className="p-4">
+                  <Alert variant="warning" className="alert-enhanced mb-3">
+                    <i className="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Generate for All Students:</strong> This will generate fee chalans for all students across all classes using configured fee amounts from "Fee Amount Configuration" tab.
+                  </Alert>
+                  <Button 
+                    variant="primary btn-enhanced" 
+                    onClick={generateAllStudentsFeeChalans}
+                    disabled={loading}
+                    className="w-100 mb-3"
+                    size="lg"
+                  >
+                    <i className="fas fa-file-invoice-dollar me-2"></i>
+                    {loading ? 'Generating...' : 'Generate Fee Chalans for All Students'}
+                  </Button>
                   <div className="text-center">
                     <i className="fas fa-file-invoice-dollar fa-3x text-muted mb-3"></i>
                     <h6 className="text-muted">Professional Fee Chalans</h6>
                     <ul className="list-unstyled text-start">
                       <li className="mb-2">
                         <i className="fas fa-check text-success me-2"></i>
-                        Complete student information
+                        Uses class-specific fee amounts
                       </li>
                       <li className="mb-2">
                         <i className="fas fa-check text-success me-2"></i>
-                        Detailed fee structure
-                      </li>
-                      <li className="mb-2">
-                        <i className="fas fa-check text-success me-2"></i>
-                        Payment instructions
-                      </li>
-                      <li className="mb-2">
-                        <i className="fas fa-check text-success me-2"></i>
-                        School branding
-                      </li>
-                      <li className="mb-2">
-                        <i className="fas fa-check text-success me-2"></i>
-                        Auto-save to database
+                        Auto-saves to database
                       </li>
                       <li className="mb-2">
                         <i className="fas fa-check text-success me-2"></i>
@@ -1261,6 +1482,320 @@ const FeeChalan = () => {
               )}
             </Card.Body>
           </Card>
+        </Tab>
+
+        <Tab eventKey="feeAmounts" title="Fee Amount Configuration">
+          <Card className="card-enhanced">
+            <Card.Header style={{ 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none'
+            }}>
+              <h5 className="mb-0">
+                <i className="fas fa-dollar-sign me-2"></i>
+                Configure Fee Amounts by Class
+              </h5>
+            </Card.Header>
+            <Card.Body className="p-4">
+              <Alert variant="info" className="alert-enhanced mb-4">
+                <i className="fas fa-info-circle me-2"></i>
+                Set fee amounts for each class. These amounts will be used automatically when generating fee chalans for students in those classes.
+              </Alert>
+
+              {classes.length > 0 ? (
+                <Table striped bordered hover className="table-enhanced">
+                  <thead>
+                    <tr>
+                      <th>Class Name</th>
+                      <th>Grade</th>
+                      <th>Section</th>
+                      <th>Monthly Tuition</th>
+                      <th>Examination Fee</th>
+                      <th>Library Fee</th>
+                      <th>Sports Fee</th>
+                      <th>Transport Fee</th>
+                      <th>Other Fees</th>
+                      <th>Total</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classes.map(cls => {
+                      const savedFees = classFeeAmounts[cls.id];
+                      const total = savedFees ? 
+                        (savedFees.monthlyTuition || 0) + 
+                        (savedFees.examinationFee || 0) + 
+                        (savedFees.libraryFee || 0) + 
+                        (savedFees.sportsFee || 0) + 
+                        (savedFees.transportFee || 0) + 
+                        (savedFees.otherFees || 0) : 0;
+
+                      return (
+                        <tr key={cls.id}>
+                          <td>
+                            <div className="d-flex align-items-center">
+                              <div className="bg-primary rounded-circle d-flex align-items-center justify-content-center me-3" style={{ width: '35px', height: '35px' }}>
+                                <i className="fas fa-chalkboard text-white"></i>
+                              </div>
+                              <span className="fw-bold">{cls.name}</span>
+                            </div>
+                          </td>
+                          <td><Badge bg="info" className="badge-enhanced">Grade {cls.grade}</Badge></td>
+                          <td><Badge bg="secondary" className="badge-enhanced">{cls.section}</Badge></td>
+                          <td>
+                            {savedFees ? (
+                              <span className="fw-bold text-primary">
+                                PKR {(savedFees.monthlyTuition || 0).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-muted">Not set</span>
+                            )}
+                          </td>
+                          <td>
+                            {savedFees ? (
+                              <span className="fw-bold text-primary">
+                                PKR {(savedFees.examinationFee || 0).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-muted">Not set</span>
+                            )}
+                          </td>
+                          <td>
+                            {savedFees ? (
+                              <span className="fw-bold text-primary">
+                                PKR {(savedFees.libraryFee || 0).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-muted">Not set</span>
+                            )}
+                          </td>
+                          <td>
+                            {savedFees ? (
+                              <span className="fw-bold text-primary">
+                                PKR {(savedFees.sportsFee || 0).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-muted">Not set</span>
+                            )}
+                          </td>
+                          <td>
+                            {savedFees ? (
+                              <span className="fw-bold text-primary">
+                                PKR {(savedFees.transportFee || 0).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-muted">Not set</span>
+                            )}
+                          </td>
+                          <td>
+                            {savedFees ? (
+                              <span className="fw-bold text-primary">
+                                PKR {(savedFees.otherFees || 0).toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-muted">Not set</span>
+                            )}
+                          </td>
+                          <td>
+                            {total > 0 ? (
+                              <span className="fw-bold text-success">
+                                PKR {total.toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-muted">-</span>
+                            )}
+                          </td>
+                          <td>
+                            {savedFees ? (
+                              <Badge bg="success" className="badge-enhanced">
+                                <i className="fas fa-check me-1"></i>
+                                Configured
+                              </Badge>
+                            ) : (
+                              <Badge bg="warning" className="badge-enhanced">
+                                <i className="fas fa-exclamation-triangle me-1"></i>
+                                Not Set
+                              </Badge>
+                            )}
+                          </td>
+                          <td>
+                            <Button 
+                              variant="outline-primary btn-enhanced" 
+                              size="sm"
+                              onClick={() => openFeeAmountEditor(cls.id)}
+                              title="Edit Fee Amounts"
+                            >
+                              <i className="fas fa-edit me-1"></i>
+                              {savedFees ? 'Edit' : 'Set'}
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </Table>
+              ) : (
+                <div className="text-center py-4">
+                  <i className="fas fa-chalkboard fa-3x text-muted mb-3"></i>
+                  <h6 className="text-muted">No classes found</h6>
+                  <p className="text-muted small">Classes will appear here once they are created</p>
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+
+          {/* Fee Amount Edit Modal */}
+          <Modal 
+            show={editingClassFee !== null} 
+            onHide={() => setEditingClassFee(null)} 
+            size="lg" 
+            centered
+          >
+            <Modal.Header closeButton style={{ 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none'
+            }}>
+              <Modal.Title>
+                <i className="fas fa-edit me-2"></i>
+                Configure Fee Amounts - {editingClassFee ? getClassName(editingClassFee) : ''}
+              </Modal.Title>
+            </Modal.Header>
+            <Modal.Body className="p-4">
+              <Alert variant="info" className="alert-enhanced mb-4">
+                <i className="fas fa-info-circle me-2"></i>
+                Set the fee amounts for this class. These will be used automatically when generating fee chalans for students in this class.
+              </Alert>
+
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="form-label-enhanced">
+                      Monthly Tuition Fee (PKR) <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      className="form-control-enhanced"
+                      value={feeAmountForm.monthlyTuition}
+                      onChange={(e) => setFeeAmountForm(prev => ({ ...prev, monthlyTuition: parseInt(e.target.value) || 0 }))}
+                      placeholder="Enter monthly tuition fee"
+                      min="0"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="form-label-enhanced">
+                      Examination Fee (PKR) <span className="text-danger">*</span>
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      className="form-control-enhanced"
+                      value={feeAmountForm.examinationFee}
+                      onChange={(e) => setFeeAmountForm(prev => ({ ...prev, examinationFee: parseInt(e.target.value) || 0 }))}
+                      placeholder="Enter examination fee"
+                      min="0"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="form-label-enhanced">
+                      Library Fee (PKR)
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      className="form-control-enhanced"
+                      value={feeAmountForm.libraryFee}
+                      onChange={(e) => setFeeAmountForm(prev => ({ ...prev, libraryFee: parseInt(e.target.value) || 0 }))}
+                      placeholder="Enter library fee"
+                      min="0"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="form-label-enhanced">
+                      Sports Fee (PKR)
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      className="form-control-enhanced"
+                      value={feeAmountForm.sportsFee}
+                      onChange={(e) => setFeeAmountForm(prev => ({ ...prev, sportsFee: parseInt(e.target.value) || 0 }))}
+                      placeholder="Enter sports fee"
+                      min="0"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="form-label-enhanced">
+                      Transport Fee (PKR)
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      className="form-control-enhanced"
+                      value={feeAmountForm.transportFee}
+                      onChange={(e) => setFeeAmountForm(prev => ({ ...prev, transportFee: parseInt(e.target.value) || 0 }))}
+                      placeholder="Enter transport fee"
+                      min="0"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label className="form-label-enhanced">
+                      Other Fees (PKR)
+                    </Form.Label>
+                    <Form.Control
+                      type="number"
+                      className="form-control-enhanced"
+                      value={feeAmountForm.otherFees}
+                      onChange={(e) => setFeeAmountForm(prev => ({ ...prev, otherFees: parseInt(e.target.value) || 0 }))}
+                      placeholder="Enter other fees"
+                      min="0"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              <div className="bg-light p-3 rounded mt-3">
+                <h6 className="text-primary mb-2">
+                  <i className="fas fa-calculator me-2"></i>
+                  Total Amount: PKR {(
+                    (feeAmountForm.monthlyTuition || 0) + 
+                    (feeAmountForm.examinationFee || 0) + 
+                    (feeAmountForm.libraryFee || 0) + 
+                    (feeAmountForm.sportsFee || 0) + 
+                    (feeAmountForm.transportFee || 0) + 
+                    (feeAmountForm.otherFees || 0)
+                  ).toLocaleString()}
+                </h6>
+              </div>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary btn-enhanced" onClick={() => setEditingClassFee(null)}>
+                <i className="fas fa-times me-2"></i>
+                Cancel
+              </Button>
+              <Button 
+                variant="success btn-enhanced" 
+                onClick={() => saveClassFeeAmount(editingClassFee)}
+                disabled={loading}
+              >
+                <i className="fas fa-save me-2"></i>
+                {loading ? 'Saving...' : 'Save Fee Amounts'}
+              </Button>
+            </Modal.Footer>
+          </Modal>
         </Tab>
       </Tabs>
 
