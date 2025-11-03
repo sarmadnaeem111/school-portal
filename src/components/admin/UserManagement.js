@@ -261,6 +261,14 @@ const UserManagement = () => {
             role="parent"
           />
         </Tab>
+        <Tab eventKey="transport" title={`Transport (${getUsersByRole('transport').length})`}>
+          <UserTable 
+            users={getUsersByRole('transport')} 
+            onEdit={handleEdit} 
+            onDelete={handleDelete}
+            role="transport"
+          />
+        </Tab>
       </Tabs>
 
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
@@ -315,6 +323,7 @@ const UserManagement = () => {
                     <option value="student">Student</option>
                     <option value="teacher">Teacher</option>
                     <option value="parent">Parent</option>
+                    <option value="transport">Transport</option>
                   </Form.Select>
                 </Form.Group>
               </Col>
