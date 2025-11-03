@@ -45,6 +45,13 @@ const UserManagement = () => {
     }
   };
 
+  const getClassName = (classId) => {
+    if (!classId) return 'N/A';
+    const cls = classes.find(c => c.id === classId);
+    if (!cls) return classId;
+    return `${cls.name}${cls.section ? ' - ' + cls.section : ''}${cls.grade ? ' (Grade ' + cls.grade + ')' : ''}`;
+  };
+
   // Helper function to get parent UID from email
   const getParentUidFromEmail = async (parentEmail) => {
     if (!parentEmail) return null;
@@ -96,16 +103,7 @@ const UserManagement = () => {
     try {
       if (editingUser) {
         // Update existing user
-        let processedData = { ...formData };
-        if (formData.role === 'student' && formData.parentId) {
-          try {
-            const parentUid = await getParentUidFromEmail(formData.parentId);
-            processedData.parentId = parentUid;
-          } catch (error) {
-            alert(`Parent lookup failed: ${error.message}`);
-            return;
-          }
-        }
+        let processedData = { ...formData }; // keep parentId as the email string provided
         await updateDoc(doc(db, 'users', editingUser.id), processedData);
       } else {
         // Create new user
@@ -120,17 +118,7 @@ const UserManagement = () => {
         console.log('User profile updated');
         
         // Convert parent email to UID if provided
-        let processedUserData = { ...formData };
-        if (formData.role === 'student' && formData.parentId) {
-          try {
-            const parentUid = await getParentUidFromEmail(formData.parentId);
-            processedUserData.parentId = parentUid;
-            console.log('Parent UID found:', parentUid);
-          } catch (error) {
-            alert(`Parent lookup failed: ${error.message}`);
-            return;
-          }
-        }
+        let processedUserData = { ...formData }; // keep parentId as the email string provided
         
         // Create user document with UID as document ID
         const userDocData = {
@@ -243,6 +231,7 @@ const UserManagement = () => {
             onEdit={handleEdit} 
             onDelete={handleDelete}
             role="student"
+            getClassName={getClassName}
           />
         </Tab>
         <Tab eventKey="teachers" title={`Teachers (${getUsersByRole('teacher').length})`}>
@@ -465,7 +454,7 @@ const UserManagement = () => {
   );
 };
 
-const UserTable = ({ users, onEdit, onDelete, role }) => {
+const UserTable = ({ users, onEdit, onDelete, role, getClassName }) => {
   return (
     <Table striped bordered hover>
       <thead>
@@ -489,7 +478,7 @@ const UserTable = ({ users, onEdit, onDelete, role }) => {
             <td>{user.phone}</td>
             <td>{user.address}</td>
             {role === 'student' && <td>{user.rollNumber || 'N/A'}</td>}
-            {role === 'student' && <td>{user.classId}</td>}
+            {role === 'student' && <td>{getClassName ? getClassName(user.classId) : (user.classId || 'N/A')}</td>}
             <td>
               <Button variant="outline-primary" size="sm" onClick={() => onEdit(user)}>
                 Edit
