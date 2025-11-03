@@ -266,6 +266,14 @@ const UserManagement = () => {
             role="accounts"
           />
         </Tab>
+        <Tab eventKey="library" title={`Library (${getUsersByRole('library').length})`}>
+          <UserTable 
+            users={getUsersByRole('library')} 
+            onEdit={handleEdit} 
+            onDelete={handleDelete}
+            role="library"
+          />
+        </Tab>
         <Tab eventKey="hostel" title={`Hostel (${getUsersByRole('hostel').length})`}>
           <UserTable 
             users={getUsersByRole('hostel')} 
@@ -328,6 +336,7 @@ const UserManagement = () => {
                     <option value="student">Student</option>
                     <option value="teacher">Teacher</option>
                     <option value="parent">Parent</option>
+                    <option value="library">Library</option>
                     <option value="transport">Transport</option>
                     <option value="accounts">Accounts</option>
                     <option value="hostel">Hostel</option>
