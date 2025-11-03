@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Modal, Form, Row, Col, Card, Tab, Tabs } from 'react-bootstrap';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, setDoc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword, updateProfile, signOut } from 'firebase/auth';
-import { auth, db } from '../../firebase/config';
+import { createUserWithEmailAndPassword, updateProfile, signOut, getAuth } from 'firebase/auth';
+import { initializeApp, deleteApp, getApps } from 'firebase/app';
+import app, { auth, db } from '../../firebase/config';
 
 const UserManagement = () => {
   const navigate = useNavigate();
@@ -107,47 +108,51 @@ const UserManagement = () => {
         let processedData = { ...formData }; // keep parentId as the email string provided
         await updateDoc(doc(db, 'users', editingUser.id), processedData);
       } else {
-        // Create new user
+        // Create new user without affecting current admin session using a secondary app
         console.log('Creating new user with data:', formData);
-        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-        newlyCreatedUserId = userCredential.user.uid;
-        console.log('User created in Firebase Auth:', newlyCreatedUserId);
-        
-        await updateProfile(userCredential.user, {
-          displayName: formData.name
-        });
-        console.log('User profile updated');
-        
-        // Convert parent email to UID if provided
-        let processedUserData = { ...formData }; // keep parentId as the email string provided
-        
-        // Create user document with UID as document ID
-        const userDocData = {
-          uid: newlyCreatedUserId,
-          email: formData.email,
-          name: formData.name,
-          role: formData.role,
-          phone: formData.phone || '',
-          address: formData.address || '',
-          classId: formData.classId || '',
-          parentId: processedUserData.parentId || '',
-          rollNumber: formData.rollNumber || '',
-          gender: formData.gender || '',
-          status: formData.status || 'active',
-          createdAt: new Date()
-        };
-        
-        console.log('Saving user document to Firestore:', userDocData);
-        await setDoc(doc(db, 'users', newlyCreatedUserId), userDocData);
-        console.log('User document saved successfully');
-        
-        // Sign out the newly created user
-        await signOut(auth);
-        console.log('New user signed out');
-        
-        // Add a small delay to ensure document is written
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log('User creation completed, document should be available');
+        const existingSecondary = getApps().find(a => a.name === 'Secondary');
+        const secondaryApp = existingSecondary || initializeApp(app.options, 'Secondary');
+        const secondaryAuth = getAuth(secondaryApp);
+
+        try {
+          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email, formData.password);
+          newlyCreatedUserId = userCredential.user.uid;
+          console.log('User created in Firebase Auth (secondary):', newlyCreatedUserId);
+          
+          await updateProfile(userCredential.user, {
+            displayName: formData.name
+          });
+          console.log('User profile updated (secondary)');
+
+          let processedUserData = { ...formData }; // keep parentId as the email string provided
+
+          const userDocData = {
+            uid: newlyCreatedUserId,
+            email: formData.email,
+            name: formData.name,
+            role: formData.role,
+            phone: formData.phone || '',
+            address: formData.address || '',
+            classId: formData.classId || '',
+            parentId: processedUserData.parentId || '',
+            rollNumber: formData.rollNumber || '',
+            gender: formData.gender || '',
+            status: formData.status || 'active',
+            createdAt: new Date()
+          };
+
+          console.log('Saving user document to Firestore:', userDocData);
+          await setDoc(doc(db, 'users', newlyCreatedUserId), userDocData);
+          console.log('User document saved successfully');
+        } finally {
+          try {
+            await signOut(secondaryAuth);
+          } catch (_) {}
+          // Clean up secondary app to free resources
+          try {
+            await deleteApp(secondaryApp);
+          } catch (_) {}
+        }
       }
       
       setShowModal(false);
@@ -170,9 +175,7 @@ const UserManagement = () => {
       if (editingUser) {
         alert('User updated successfully!');
       } else {
-        alert('User created successfully! You will need to sign in again.');
-        // Redirect to login page
-        navigate('/login', { replace: true });
+        alert('User created successfully!');
       }
     } catch (error) {
       console.error('Error saving user:', error);
