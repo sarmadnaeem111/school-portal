@@ -13,7 +13,7 @@ const gradientHeader = {
 };
 
 const TransportDashboard = () => {
-  const { logout } = useAuth();
+  const { logout, userRole } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [message, setMessage] = useState('');
@@ -171,9 +171,14 @@ const TransportDashboard = () => {
     }
   };
 
+  const isAdminView = userRole === 'admin';
+
   return (
     <div className="d-flex min-vh-100">
-      <div className="sidebar-overlay" onClick={() => { const s=document.querySelector('.sidebar-enhanced'); const o=document.querySelector('.sidebar-overlay'); if (s&&o){s.classList.remove('show'); o.classList.remove('show');}}}></div>
+      {!isAdminView && (
+        <div className="sidebar-overlay" onClick={() => { const s=document.querySelector('.sidebar-enhanced'); const o=document.querySelector('.sidebar-overlay'); if (s&&o){s.classList.remove('show'); o.classList.remove('show');}}}></div>
+      )}
+      {!isAdminView && (
       <ModuleSidebar
         title="Transport"
         onLogout={handleLogout}
@@ -186,7 +191,7 @@ const TransportDashboard = () => {
           { key: 'trips', label: 'Trips', icon: 'fas fa-clock', onClick: () => setActiveTab('trips') },
           { key: 'payments', label: 'Payments', icon: 'fas fa-wallet', onClick: () => setActiveTab('payments') }
         ]}
-      />
+      />)}
       <div className="flex-grow-1 d-flex flex-column container-enhanced">
         <div className="mb-4">
         <h2 className="mb-1" style={{ background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
