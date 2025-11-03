@@ -156,6 +156,12 @@ const AdminSidebar = ({ onClose, handleLogout }) => {
             Fee Chalan
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/admin/library" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-book me-2"></i>
+            Library
+          </Nav.Link>
+        </LinkContainer>
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: '10px', paddingTop: '10px' }}>
           <Nav.Link className="text-white" onClick={handleLogoutClick} style={{ cursor: 'pointer' }}>
             <i className="fas fa-sign-out-alt me-2"></i>
