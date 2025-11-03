@@ -82,6 +82,9 @@ const Auth = () => {
         case 'transport':
           navigate('/transport/dashboard');
           break;
+        case 'library':
+          navigate('/library/dashboard');
+          break;
         default:
           navigate('/dashboard');
       }
@@ -405,6 +408,7 @@ const Auth = () => {
                               <option value="parent">Parent</option>
                               <option value="admin">Admin</option>
                               <option value="transport">Transport</option>
+                              <option value="library">Library</option>
                             </Form.Select>
                           </Form.Group>
                         </Col>
