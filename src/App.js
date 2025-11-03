@@ -11,6 +11,7 @@ import StudentDashboard from './components/student/StudentDashboard';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 import TransportDashboard from './components/transport/TransportDashboard';
+import LibraryDashboard from './components/library/LibraryDashboard';
 
 function App() {
   return (
@@ -57,6 +58,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="transport">
                   <TransportDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/library/*" 
+              element={
+                <ProtectedRoute requiredRole="library">
+                  <LibraryDashboard />
                 </ProtectedRoute>
               } 
             />
