@@ -13,7 +13,7 @@ const gradientHeader = {
 };
 
 const LibraryDashboard = () => {
-  const { logout } = useAuth();
+  const { logout, userRole } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('overview');
@@ -110,9 +110,14 @@ const LibraryDashboard = () => {
   const getName = (id) => (students.find(s => s.id === id)?.name) || 'N/A';
   const getBookTitle = (id) => (books.find(b => b.id === id)?.title) || 'N/A';
 
+  const isAdminView = userRole === 'admin';
+
   return (
     <div className="d-flex min-vh-100">
-      <div className="sidebar-overlay" onClick={() => { const s=document.querySelector('.sidebar-enhanced'); const o=document.querySelector('.sidebar-overlay'); if (s&&o){s.classList.remove('show'); o.classList.remove('show');}}}></div>
+      {!isAdminView && (
+        <div className="sidebar-overlay" onClick={() => { const s=document.querySelector('.sidebar-enhanced'); const o=document.querySelector('.sidebar-overlay'); if (s&&o){s.classList.remove('show'); o.classList.remove('show');}}}></div>
+      )}
+      {!isAdminView && (
       <ModuleSidebar
         title="Library"
         onLogout={handleLogout}
@@ -121,7 +126,7 @@ const LibraryDashboard = () => {
           { key: 'books', label: 'Books', icon: 'fas fa-book', onClick: () => setActiveTab('books') },
           { key: 'issues', label: 'Issues', icon: 'fas fa-exchange-alt', onClick: () => setActiveTab('issues') }
         ]}
-      />
+      />)}
       <div className="flex-grow-1 d-flex flex-column container-enhanced">
         <div className="mb-4">
         <h2 className="mb-1" style={{ background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
