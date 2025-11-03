@@ -147,6 +147,16 @@ export const getSecureErrorMessage = (error) => {
   }
   
   // Generic message for other errors
+  // If this is a client-side validation error we generated, surface it
+  if (
+    errorMessage.includes('Please enter a valid') ||
+    errorMessage.includes('Please fix password') ||
+    errorMessage.includes('Please select a class') ||
+    errorMessage.includes('Please enter a roll number')
+  ) {
+    return errorMessage;
+  }
+
   return 'An error occurred. Please try again or contact support.';
 };
 
