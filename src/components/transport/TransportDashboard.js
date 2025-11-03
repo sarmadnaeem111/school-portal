@@ -4,6 +4,7 @@ import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, serverTimestamp
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import ModuleSidebar from '../common/ModuleSidebar';
 
 const gradientHeader = {
   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -171,28 +172,29 @@ const TransportDashboard = () => {
   };
 
   return (
-    <div className="animate-fadeInUp">
-      <div className="mb-4">
-        <Row className="align-items-center">
-          <Col>
-            <h2 className="mb-1" style={{ background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-              <i className="fas fa-bus me-3"></i>
-              Transport Management
-            </h2>
-            <p className="text-muted mb-0">Manage vehicles, drivers, routes, assignments, trips, and payments</p>
-          </Col>
-          <Col xs="auto">
-            <Button 
-              variant="outline-danger btn-enhanced" 
-              onClick={handleLogout}
-              title="Logout"
-            >
-              <i className="fas fa-sign-out-alt me-2"></i>
-              Logout
-            </Button>
-          </Col>
-        </Row>
-      </div>
+    <div className="d-flex min-vh-100">
+      <div className="sidebar-overlay" onClick={() => { const s=document.querySelector('.sidebar-enhanced'); const o=document.querySelector('.sidebar-overlay'); if (s&&o){s.classList.remove('show'); o.classList.remove('show');}}}></div>
+      <ModuleSidebar
+        title="Transport"
+        onLogout={handleLogout}
+        items={[
+          { key: 'overview', label: 'Overview', icon: 'fas fa-tachometer-alt', onClick: () => setActiveTab('overview') },
+          { key: 'vehicles', label: 'Vehicles', icon: 'fas fa-truck', onClick: () => setActiveTab('vehicles') },
+          { key: 'drivers', label: 'Drivers', icon: 'fas fa-id-badge', onClick: () => setActiveTab('drivers') },
+          { key: 'routes', label: 'Routes', icon: 'fas fa-route', onClick: () => setActiveTab('routes') },
+          { key: 'assignments', label: 'Assignments', icon: 'fas fa-user-tag', onClick: () => setActiveTab('assignments') },
+          { key: 'trips', label: 'Trips', icon: 'fas fa-clock', onClick: () => setActiveTab('trips') },
+          { key: 'payments', label: 'Payments', icon: 'fas fa-wallet', onClick: () => setActiveTab('payments') }
+        ]}
+      />
+      <div className="flex-grow-1 d-flex flex-column container-enhanced">
+        <div className="mb-4">
+        <h2 className="mb-1" style={{ background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+          <i className="fas fa-bus me-3"></i>
+          Transport Management
+        </h2>
+        <p className="text-muted mb-0">Manage vehicles, drivers, routes, assignments, trips, and payments</p>
+        </div>
 
       {message && (
         <Alert variant={messageType} className={`alert-enhanced alert-${messageType}`} onClose={() => setMessage('')} dismissible>
@@ -200,6 +202,8 @@ const TransportDashboard = () => {
         </Alert>
       )}
 
+      <Row>
+        <Col md={12}>
       <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'overview')} className="mb-4 nav-tabs-enhanced">
         <Tab eventKey="overview" title="Overview">
           <Row>
@@ -544,6 +548,9 @@ const TransportDashboard = () => {
           </Card>
         </Tab>
       </Tabs>
+        </Col>
+      </Row>
+      </div>
     </div>
   );
 };
