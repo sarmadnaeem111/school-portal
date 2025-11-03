@@ -94,8 +94,8 @@ export const isValidPhone = (phone) => {
  */
 export const isValidName = (name) => {
   if (!name || typeof name !== 'string') return false;
-  // Allow letters, spaces, hyphens, and apostrophes
-  const nameRegex = /^[a-zA-Z\s\-'']+$/;
+  // Allow letters, spaces, hyphens, apostrophes, periods, ampersands, and digits (more permissive but safe)
+  const nameRegex = /^[a-zA-Z0-9\s\-'.&]+$/;
   return nameRegex.test(name.trim()) && name.trim().length >= 2 && name.trim().length <= 100;
 };
 
