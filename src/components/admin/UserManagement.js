@@ -374,6 +374,7 @@ const UserManagement = () => {
                     <option value="transport">Transport</option>
                     <option value="accounts">Accounts</option>
                     <option value="hostel">Hostel</option>
+                    <option value="cafeteria">Cafeteria</option>
                   </Form.Select>
                 </Form.Group>
               </Col>
