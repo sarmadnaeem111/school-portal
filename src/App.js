@@ -14,6 +14,7 @@ import TransportDashboard from './components/transport/TransportDashboard';
 import LibraryDashboard from './components/library/LibraryDashboard';
 import AccountsDashboard from './components/accounts/AccountsDashboard';
 import HostelDashboard from './components/hostel/HostelDashboard';
+import CafeteriaDashboard from './components/cafeteria/CafeteriaDashboard';
 
 function App() {
   return (
@@ -84,6 +85,14 @@ function App() {
               element={
                 <ProtectedRoute requiredRole="hostel">
                   <HostelDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/cafeteria/*" 
+              element={
+                <ProtectedRoute requiredRole="cafeteria">
+                  <CafeteriaDashboard />
                 </ProtectedRoute>
               } 
             />
