@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Tabs, Tab, Card, Row, Col, Form, Button, Table, Alert, Badge, Spinner } from 'react-bootstrap';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Tabs, Tab, Card, Row, Col, Form, Button, Table, Alert, Badge, Spinner, ProgressBar } from 'react-bootstrap';
 import { collection, addDoc, getDocs, updateDoc, doc, deleteDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,6 +32,9 @@ const TransportDashboard = () => {
   const [driverForm, setDriverForm] = useState({ name: '', phone: '', licenseNo: '', status: 'active' });
   const [routeForm, setRouteForm] = useState({ title: '', startPoint: '', endPoint: '', stops: '' });
   const [assignmentForm, setAssignmentForm] = useState({ studentId: '', vehicleId: '', driverId: '', routeId: '', status: 'active' });
+  const [tripForm, setTripForm] = useState({ vehicleId: '', driverId: '', routeId: '', date: '', tripType: 'morning', status: 'completed', notes: '' });
+  const [paymentForm, setPaymentForm] = useState({ studentId: '', assignmentId: '', amount: '', month: '', paymentDate: '', status: 'paid', notes: '' });
+  const [reportDateRange, setReportDateRange] = useState({ start: '', end: '' });
 
   useEffect(() => {
     loadAll();
@@ -155,10 +158,260 @@ const TransportDashboard = () => {
     }
   };
 
+  const addTrip = async () => {
+    if (!tripForm.vehicleId || !tripForm.driverId || !tripForm.routeId || !tripForm.date) {
+      setMessage('Please fill all required fields');
+      setMessageType('warning');
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'transportTrips'), {
+        ...tripForm,
+        createdAt: serverTimestamp()
+      });
+      setTripForm({ vehicleId: '', driverId: '', routeId: '', date: '', tripType: 'morning', status: 'completed', notes: '' });
+      setMessage('Trip logged successfully');
+      setMessageType('success');
+      loadAll();
+    } catch (e) {
+      setMessage('Failed to log trip');
+      setMessageType('danger');
+    }
+  };
+
+  const deleteTrip = async (id) => {
+    if (!id) return;
+    try {
+      await deleteDoc(doc(db, 'transportTrips', id));
+      setTrips(prev => prev.filter(t => t.id !== id));
+      setMessage('Trip deleted successfully');
+      setMessageType('success');
+    } catch (e) {
+      setMessage('Failed to delete trip');
+      setMessageType('danger');
+    }
+  };
+
+  const addPayment = async () => {
+    if (!paymentForm.studentId || !paymentForm.amount || !paymentForm.month) {
+      setMessage('Please fill all required fields');
+      setMessageType('warning');
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'transportPayments'), {
+        ...paymentForm,
+        amount: Number(paymentForm.amount) || 0,
+        createdAt: serverTimestamp()
+      });
+      setPaymentForm({ studentId: '', assignmentId: '', amount: '', month: '', paymentDate: '', status: 'paid', notes: '' });
+      setMessage('Payment recorded successfully');
+      setMessageType('success');
+      loadAll();
+    } catch (e) {
+      setMessage('Failed to record payment');
+      setMessageType('danger');
+    }
+  };
+
+  const markPaymentUnpaid = async (id) => {
+    try {
+      await updateDoc(doc(db, 'transportPayments', id), { status: 'unpaid' });
+      setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'unpaid' } : p));
+      setMessage('Payment status updated');
+      setMessageType('success');
+    } catch (e) {
+      setMessage('Failed to update payment');
+      setMessageType('danger');
+    }
+  };
+
+  const deletePayment = async (id) => {
+    if (!id) return;
+    try {
+      await deleteDoc(doc(db, 'transportPayments', id));
+      setPayments(prev => prev.filter(p => p.id !== id));
+      setMessage('Payment deleted successfully');
+      setMessageType('success');
+    } catch (e) {
+      setMessage('Failed to delete payment');
+      setMessageType('danger');
+    }
+  };
+
   const lookupName = (id, list, key) => {
     const found = list.find(x => x.id === id);
     if (!found) return 'N/A';
     return key ? (found[key] || 'N/A') : (found.name || found.title || found.number || 'N/A');
+  };
+
+  // Report calculations
+  const reportData = useMemo(() => {
+    const filteredTrips = trips.filter(t => {
+      if (!reportDateRange.start && !reportDateRange.end) return true;
+      const tripDate = t.date || (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] : '');
+      if (reportDateRange.start && tripDate < reportDateRange.start) return false;
+      if (reportDateRange.end && tripDate > reportDateRange.end) return false;
+      return true;
+    });
+
+    const filteredPayments = payments.filter(p => {
+      if (!reportDateRange.start && !reportDateRange.end) return true;
+      const paymentDate = p.paymentDate || p.month || (p.createdAt?.toDate ? p.createdAt.toDate().toISOString().split('T')[0] : '');
+      if (reportDateRange.start && paymentDate < reportDateRange.start) return false;
+      if (reportDateRange.end && paymentDate > reportDateRange.end) return false;
+      return true;
+    });
+
+    const vehicleStats = {
+      total: vehicles.length,
+      active: vehicles.filter(v => v.status === 'active').length,
+      maintenance: vehicles.filter(v => v.status === 'maintenance').length,
+      inactive: vehicles.filter(v => v.status === 'inactive').length,
+      tripsCount: {}
+    };
+
+    filteredTrips.forEach(t => {
+      if (!vehicleStats.tripsCount[t.vehicleId]) {
+        vehicleStats.tripsCount[t.vehicleId] = 0;
+      }
+      vehicleStats.tripsCount[t.vehicleId]++;
+    });
+
+    const driverStats = {
+      total: drivers.length,
+      active: drivers.filter(d => d.status === 'active').length,
+      onLeave: drivers.filter(d => d.status === 'on_leave').length,
+      tripsCount: {}
+    };
+
+    filteredTrips.forEach(t => {
+      if (!driverStats.tripsCount[t.driverId]) {
+        driverStats.tripsCount[t.driverId] = 0;
+      }
+      driverStats.tripsCount[t.driverId]++;
+    });
+
+    const tripStats = {
+      total: filteredTrips.length,
+      completed: filteredTrips.filter(t => t.status === 'completed').length,
+      delayed: filteredTrips.filter(t => t.status === 'delayed').length,
+      cancelled: filteredTrips.filter(t => t.status === 'cancelled').length,
+      byType: {
+        morning: filteredTrips.filter(t => t.tripType === 'morning').length,
+        afternoon: filteredTrips.filter(t => t.tripType === 'afternoon').length,
+        evening: filteredTrips.filter(t => t.tripType === 'evening').length
+      },
+      byRoute: {}
+    };
+
+    filteredTrips.forEach(t => {
+      if (!tripStats.byRoute[t.routeId]) {
+        tripStats.byRoute[t.routeId] = 0;
+      }
+      tripStats.byRoute[t.routeId]++;
+    });
+
+    const paymentStats = {
+      total: filteredPayments.length,
+      paid: filteredPayments.filter(p => p.status === 'paid').length,
+      unpaid: filteredPayments.filter(p => p.status !== 'paid').length,
+      totalAmount: filteredPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+      paidAmount: filteredPayments.filter(p => p.status === 'paid').reduce((sum, p) => sum + (Number(p.amount) || 0), 0),
+      unpaidAmount: filteredPayments.filter(p => p.status !== 'paid').reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    };
+
+    const monthlyPayments = {};
+    filteredPayments.forEach(p => {
+      const month = p.month || 'unknown';
+      if (!monthlyPayments[month]) {
+        monthlyPayments[month] = { total: 0, paid: 0, unpaid: 0, amount: 0 };
+      }
+      monthlyPayments[month].total++;
+      monthlyPayments[month].amount += Number(p.amount) || 0;
+      if (p.status === 'paid') {
+        monthlyPayments[month].paid++;
+      } else {
+        monthlyPayments[month].unpaid++;
+      }
+    });
+
+    const assignmentStats = {
+      total: assignments.length,
+      active: assignments.filter(a => a.status === 'active').length,
+      inactive: assignments.filter(a => a.status === 'inactive').length
+    };
+
+    return {
+      trips: filteredTrips,
+      payments: filteredPayments,
+      vehicleStats,
+      driverStats,
+      tripStats,
+      paymentStats,
+      monthlyPayments,
+      assignmentStats
+    };
+  }, [vehicles, drivers, trips, payments, assignments, reportDateRange]);
+
+  const exportToCSV = (type) => {
+    let csvContent = '';
+    let filename = '';
+
+    if (type === 'trips') {
+      csvContent = 'Date,Vehicle,Driver,Route,Type,Status,Notes\n';
+      reportData.trips.forEach(t => {
+        const vehicleName = lookupName(t.vehicleId, vehicles, 'number');
+        const driverName = lookupName(t.driverId, drivers, 'name');
+        const routeName = lookupName(t.routeId, routes, 'title');
+        csvContent += `${t.date || ''},${vehicleName},${driverName},${routeName},${t.tripType || 'morning'},${t.status || 'completed'},"${(t.notes || '').replace(/"/g, '""')}"\n`;
+      });
+      filename = `transport_trips_report_${new Date().toISOString().split('T')[0]}.csv`;
+    } else if (type === 'payments') {
+      csvContent = 'Student,Amount,Month,Payment Date,Status,Notes\n';
+      reportData.payments.forEach(p => {
+        const studentName = lookupName(p.studentId, students, 'name');
+        csvContent += `${studentName},${p.amount || 0},${p.month || ''},${p.paymentDate || ''},${p.status || 'unpaid'},"${(p.notes || '').replace(/"/g, '""')}"\n`;
+      });
+      filename = `transport_payments_report_${new Date().toISOString().split('T')[0]}.csv`;
+    } else if (type === 'vehicles') {
+      csvContent = 'Vehicle Number,Model,Capacity,Status,Trips Count\n';
+      vehicles.forEach(v => {
+        const tripsCount = reportData.vehicleStats.tripsCount[v.id] || 0;
+        csvContent += `${v.number},${v.model || ''},${v.capacity || 0},${v.status || 'active'},${tripsCount}\n`;
+      });
+      filename = `transport_vehicles_report_${new Date().toISOString().split('T')[0]}.csv`;
+    } else {
+      // Summary report
+      csvContent = 'Report Type,Value\n';
+      csvContent += `Total Vehicles,${reportData.vehicleStats.total}\n`;
+      csvContent += `Active Vehicles,${reportData.vehicleStats.active}\n`;
+      csvContent += `Maintenance Vehicles,${reportData.vehicleStats.maintenance}\n`;
+      csvContent += `Total Drivers,${reportData.driverStats.total}\n`;
+      csvContent += `Active Drivers,${reportData.driverStats.active}\n`;
+      csvContent += `Total Trips,${reportData.tripStats.total}\n`;
+      csvContent += `Completed Trips,${reportData.tripStats.completed}\n`;
+      csvContent += `Delayed Trips,${reportData.tripStats.delayed}\n`;
+      csvContent += `Cancelled Trips,${reportData.tripStats.cancelled}\n`;
+      csvContent += `Total Assignments,${reportData.assignmentStats.total}\n`;
+      csvContent += `Active Assignments,${reportData.assignmentStats.active}\n`;
+      csvContent += `\nPayment Statistics\n`;
+      csvContent += `Total Payments,${reportData.paymentStats.total}\n`;
+      csvContent += `Paid Payments,${reportData.paymentStats.paid}\n`;
+      csvContent += `Unpaid Payments,${reportData.paymentStats.unpaid}\n`;
+      csvContent += `Total Amount,${reportData.paymentStats.totalAmount}\n`;
+      csvContent += `Paid Amount,${reportData.paymentStats.paidAmount}\n`;
+      csvContent += `Unpaid Amount,${reportData.paymentStats.unpaidAmount}\n`;
+      filename = `transport_summary_report_${new Date().toISOString().split('T')[0]}.csv`;
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    setMessage('Report exported successfully');
+    setMessageType('success');
   };
 
   const handleLogout = async () => {
@@ -189,7 +442,8 @@ const TransportDashboard = () => {
           { key: 'routes', label: 'Routes', icon: 'fas fa-route', onClick: () => setActiveTab('routes') },
           { key: 'assignments', label: 'Assignments', icon: 'fas fa-user-tag', onClick: () => setActiveTab('assignments') },
           { key: 'trips', label: 'Trips', icon: 'fas fa-clock', onClick: () => setActiveTab('trips') },
-          { key: 'payments', label: 'Payments', icon: 'fas fa-wallet', onClick: () => setActiveTab('payments') }
+          { key: 'payments', label: 'Payments', icon: 'fas fa-wallet', onClick: () => setActiveTab('payments') },
+          { key: 'reports', label: 'Reports', icon: 'fas fa-chart-line', onClick: () => setActiveTab('reports') }
         ]}
       />)}
       <div className="flex-grow-1 d-flex flex-column container-enhanced">
@@ -536,21 +790,632 @@ const TransportDashboard = () => {
         </Tab>
 
         <Tab eventKey="trips" title="Trips">
-          <Card className="card-enhanced">
-            <Card.Header style={gradientHeader}><strong>Trips</strong></Card.Header>
-            <Card.Body>
-              <p className="text-muted mb-0">Log daily trips and attendance. (Coming soon)</p>
-            </Card.Body>
-          </Card>
+          <Row>
+            <Col md={5}>
+              <Card className="card-enhanced mb-3">
+                <Card.Header style={gradientHeader}><strong>Log Trip</strong></Card.Header>
+                <Card.Body>
+                  <Form>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Vehicle *</Form.Label>
+                      <Form.Select value={tripForm.vehicleId} onChange={(e)=>setTripForm({...tripForm, vehicleId: e.target.value})}>
+                        <option value="">Select a vehicle</option>
+                        {vehicles.map(v => (
+                          <option key={v.id} value={v.id}>{v.number} - {v.model}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Driver *</Form.Label>
+                      <Form.Select value={tripForm.driverId} onChange={(e)=>setTripForm({...tripForm, driverId: e.target.value})}>
+                        <option value="">Select a driver</option>
+                        {drivers.map(d => (
+                          <option key={d.id} value={d.id}>{d.name} - {d.phone}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Route *</Form.Label>
+                      <Form.Select value={tripForm.routeId} onChange={(e)=>setTripForm({...tripForm, routeId: e.target.value})}>
+                        <option value="">Select a route</option>
+                        {routes.map(r => (
+                          <option key={r.id} value={r.id}>{r.title}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Date *</Form.Label>
+                          <Form.Control type="date" value={tripForm.date} onChange={(e)=>setTripForm({...tripForm, date: e.target.value})}/>
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Trip Type</Form.Label>
+                          <Form.Select value={tripForm.tripType} onChange={(e)=>setTripForm({...tripForm, tripType: e.target.value})}>
+                            <option value="morning">Morning</option>
+                            <option value="afternoon">Afternoon</option>
+                            <option value="evening">Evening</option>
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Status</Form.Label>
+                      <Form.Select value={tripForm.status} onChange={(e)=>setTripForm({...tripForm, status: e.target.value})}>
+                        <option value="completed">Completed</option>
+                        <option value="delayed">Delayed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </Form.Select>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Notes</Form.Label>
+                      <Form.Control as="textarea" rows={3} value={tripForm.notes} onChange={(e)=>setTripForm({...tripForm, notes: e.target.value})} placeholder="Optional notes about the trip"/>
+                    </Form.Group>
+                    <Button variant="success btn-enhanced" onClick={addTrip} disabled={loading}>
+                      <i className="fas fa-plus me-2"></i>
+                      Log Trip
+                    </Button>
+                  </Form>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={7}>
+              <Card className="card-enhanced mb-3">
+                <Card.Header style={gradientHeader}><strong>Trips List</strong></Card.Header>
+                <Card.Body>
+                  <Table responsive striped bordered hover size="sm" className="table-enhanced">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Vehicle</th>
+                        <th>Driver</th>
+                        <th>Route</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {trips.map(t => (
+                        <tr key={t.id}>
+                          <td>{t.date || 'N/A'}</td>
+                          <td>{lookupName(t.vehicleId, vehicles, 'number')}</td>
+                          <td>{lookupName(t.driverId, drivers, 'name')}</td>
+                          <td>{lookupName(t.routeId, routes, 'title')}</td>
+                          <td><Badge bg="info">{t.tripType || 'morning'}</Badge></td>
+                          <td>
+                            <Badge bg={
+                              t.status === 'completed' ? 'success' :
+                              t.status === 'delayed' ? 'warning' : 'danger'
+                            }>
+                              {t.status || 'completed'}
+                            </Badge>
+                          </td>
+                          <td>
+                            <Button size="sm" variant="outline-danger" onClick={()=>deleteTrip(t.id)}>
+                              <i className="fas fa-trash"></i>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                  {trips.length === 0 && (
+                    <p className="text-muted text-center mb-0 mt-3">No trips logged yet</p>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
         </Tab>
 
         <Tab eventKey="payments" title="Payments">
-          <Card className="card-enhanced">
-            <Card.Header style={gradientHeader}><strong>Payments</strong></Card.Header>
-            <Card.Body>
-              <p className="text-muted mb-0">Record transport fee payments. (Coming soon)</p>
-            </Card.Body>
-          </Card>
+          <Row>
+            <Col md={5}>
+              <Card className="card-enhanced mb-3">
+                <Card.Header style={gradientHeader}><strong>Record Payment</strong></Card.Header>
+                <Card.Body>
+                  <Form>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Student *</Form.Label>
+                      <Form.Select value={paymentForm.studentId} onChange={(e)=>setPaymentForm({...paymentForm, studentId: e.target.value})}>
+                        <option value="">Select a student</option>
+                        {students.map(s => (
+                          <option key={s.id} value={s.id}>{s.name} {s.rollNumber ? `(${s.rollNumber})` : ''}</option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Assignment (Optional)</Form.Label>
+                      <Form.Select value={paymentForm.assignmentId} onChange={(e)=>setPaymentForm({...paymentForm, assignmentId: e.target.value})}>
+                        <option value="">Select an assignment (optional)</option>
+                        {assignments.filter(a => a.studentId === paymentForm.studentId).map(a => (
+                          <option key={a.id} value={a.id}>
+                            {lookupName(a.vehicleId, vehicles, 'number')} - {lookupName(a.routeId, routes, 'title')}
+                          </option>
+                        ))}
+                      </Form.Select>
+                    </Form.Group>
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Amount (PKR) *</Form.Label>
+                          <Form.Control type="number" value={paymentForm.amount} onChange={(e)=>setPaymentForm({...paymentForm, amount: e.target.value})} placeholder="0"/>
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Month *</Form.Label>
+                          <Form.Control type="month" value={paymentForm.month} onChange={(e)=>setPaymentForm({...paymentForm, month: e.target.value})}/>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                    <Row>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Payment Date</Form.Label>
+                          <Form.Control type="date" value={paymentForm.paymentDate} onChange={(e)=>setPaymentForm({...paymentForm, paymentDate: e.target.value})}/>
+                        </Form.Group>
+                      </Col>
+                      <Col md={6}>
+                        <Form.Group className="mb-3">
+                          <Form.Label>Status</Form.Label>
+                          <Form.Select value={paymentForm.status} onChange={(e)=>setPaymentForm({...paymentForm, status: e.target.value})}>
+                            <option value="paid">Paid</option>
+                            <option value="unpaid">Unpaid</option>
+                          </Form.Select>
+                        </Form.Group>
+                      </Col>
+                    </Row>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Notes</Form.Label>
+                      <Form.Control as="textarea" rows={3} value={paymentForm.notes} onChange={(e)=>setPaymentForm({...paymentForm, notes: e.target.value})} placeholder="Optional payment notes"/>
+                    </Form.Group>
+                    <Button variant="success btn-enhanced" onClick={addPayment} disabled={loading}>
+                      <i className="fas fa-plus me-2"></i>
+                      Record Payment
+                    </Button>
+                  </Form>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={7}>
+              <Card className="card-enhanced mb-3">
+                <Card.Header style={gradientHeader}><strong>Payments List</strong></Card.Header>
+                <Card.Body>
+                  <Table responsive striped bordered hover size="sm" className="table-enhanced">
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Amount</th>
+                        <th>Month</th>
+                        <th>Payment Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payments.map(p => (
+                        <tr key={p.id}>
+                          <td>{lookupName(p.studentId, students, 'name')}</td>
+                          <td>PKR {(Number(p.amount) || 0).toLocaleString()}</td>
+                          <td>{p.month || 'N/A'}</td>
+                          <td>{p.paymentDate || 'N/A'}</td>
+                          <td>
+                            <Badge bg={p.status === 'paid' ? 'success' : 'warning'}>
+                              {p.status || 'unpaid'}
+                            </Badge>
+                          </td>
+                          <td className="d-flex gap-2">
+                            {p.status === 'paid' && (
+                              <Button size="sm" variant="outline-warning" onClick={()=>markPaymentUnpaid(p.id)} title="Mark as Unpaid">
+                                <i className="fas fa-times"></i>
+                              </Button>
+                            )}
+                            <Button size="sm" variant="outline-danger" onClick={()=>deletePayment(p.id)}>
+                              <i className="fas fa-trash"></i>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                  {payments.length === 0 && (
+                    <p className="text-muted text-center mb-0 mt-3">No payments recorded yet</p>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+            </Row>
+          </Tab>
+
+        <Tab eventKey="reports" title="Reports">
+          <Row className="mb-3">
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Date Range Filter</strong></Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label>Start Date</Form.Label>
+                        <Form.Control
+                          type="date"
+                          value={reportDateRange.start}
+                          onChange={(e) => setReportDateRange({ ...reportDateRange, start: e.target.value })}
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label>End Date</Form.Label>
+                        <Form.Control
+                          type="date"
+                          value={reportDateRange.end}
+                          onChange={(e) => setReportDateRange({ ...reportDateRange, end: e.target.value })}
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4} className="d-flex align-items-end">
+                      <Button
+                        variant="outline-secondary"
+                        onClick={() => setReportDateRange({ start: '', end: '' })}
+                        className="w-100"
+                      >
+                        <i className="fas fa-times me-2"></i>Clear Filter
+                      </Button>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={3}>
+              <Card className="card-enhanced">
+                <Card.Header style={{ background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', color: 'white' }}>
+                  <strong>Total Vehicles</strong>
+                </Card.Header>
+                <Card.Body>
+                  <h4 className="mb-0">{reportData.vehicleStats.total}</h4>
+                  <small className="text-muted">All vehicles</small>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="card-enhanced">
+                <Card.Header style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+                  <strong>Active Vehicles</strong>
+                </Card.Header>
+                <Card.Body>
+                  <h4 className="mb-0">{reportData.vehicleStats.active}</h4>
+                  <small className="text-muted">In service</small>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="card-enhanced">
+                <Card.Header style={{ background: 'linear-gradient(135deg, #ee0979 0%, #ff6a00 100%)', color: 'white' }}>
+                  <strong>Total Trips</strong>
+                </Card.Header>
+                <Card.Body>
+                  <h4 className="mb-0">{reportData.tripStats.total}</h4>
+                  <small className="text-muted">Period trips</small>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}>
+                  <strong>Trip Success Rate</strong>
+                </Card.Header>
+                <Card.Body>
+                  <h4 className="mb-0">
+                    {reportData.tripStats.total > 0 
+                      ? `${((reportData.tripStats.completed / reportData.tripStats.total) * 100).toFixed(1)}%`
+                      : '0%'}
+                  </h4>
+                  <ProgressBar
+                    variant={reportData.tripStats.total > 0 && (reportData.tripStats.completed / reportData.tripStats.total) >= 0.8 ? 'success' : 'warning'}
+                    now={reportData.tripStats.total > 0 ? (reportData.tripStats.completed / reportData.tripStats.total) * 100 : 0}
+                    className="mt-2"
+                  />
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={6}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Trip Statistics</strong></Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Trips</small>
+                        <h5>{reportData.tripStats.total}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Completed</small>
+                        <h5 className="text-success">{reportData.tripStats.completed}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Delayed</small>
+                        <h5 className="text-warning">{reportData.tripStats.delayed}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Cancelled</small>
+                        <h5 className="text-danger">{reportData.tripStats.cancelled}</h5>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted d-block mb-2">By Trip Type</small>
+                        <div className="mb-2">
+                          <small><strong>Morning:</strong> {reportData.tripStats.byType.morning}</small>
+                        </div>
+                        <div className="mb-2">
+                          <small><strong>Afternoon:</strong> {reportData.tripStats.byType.afternoon}</small>
+                        </div>
+                        <div className="mb-2">
+                          <small><strong>Evening:</strong> {reportData.tripStats.byType.evening}</small>
+                        </div>
+                      </div>
+                      {reportData.tripStats.total > 0 && (
+                        <div className="mt-3">
+                          <small className="text-muted">Completion Rate</small>
+                          <ProgressBar
+                            variant="success"
+                            now={(reportData.tripStats.completed / reportData.tripStats.total) * 100}
+                            className="mt-1"
+                            label={`${((reportData.tripStats.completed / reportData.tripStats.total) * 100).toFixed(1)}%`}
+                          />
+                        </div>
+                      )}
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={6}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Payment Statistics</strong></Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Payments</small>
+                        <h5>{reportData.paymentStats.total}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Paid</small>
+                        <h5 className="text-success">{reportData.paymentStats.paid}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Unpaid</small>
+                        <h5 className="text-warning">{reportData.paymentStats.unpaid}</h5>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Amount</small>
+                        <h5>PKR {reportData.paymentStats.totalAmount.toLocaleString()}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Paid Amount</small>
+                        <h5 className="text-success">PKR {reportData.paymentStats.paidAmount.toLocaleString()}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Outstanding</small>
+                        <h5 className="text-warning">PKR {reportData.paymentStats.unpaidAmount.toLocaleString()}</h5>
+                      </div>
+                    </Col>
+                  </Row>
+                  {reportData.paymentStats.total > 0 && (
+                    <div className="mt-3">
+                      <small className="text-muted">Payment Rate</small>
+                      <ProgressBar
+                        variant="success"
+                        now={(reportData.paymentStats.paid / reportData.paymentStats.total) * 100}
+                        className="mt-1"
+                        label={`${((reportData.paymentStats.paid / reportData.paymentStats.total) * 100).toFixed(1)}%`}
+                      />
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={6}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Vehicle & Driver Stats</strong></Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Vehicles</small>
+                        <h5>{reportData.vehicleStats.total}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Active</small>
+                        <h5 className="text-success">{reportData.vehicleStats.active}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Maintenance</small>
+                        <h5 className="text-warning">{reportData.vehicleStats.maintenance}</h5>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Drivers</small>
+                        <h5>{reportData.driverStats.total}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Active</small>
+                        <h5 className="text-success">{reportData.driverStats.active}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">On Leave</small>
+                        <h5 className="text-warning">{reportData.driverStats.onLeave}</h5>
+                      </div>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={6}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Assignment Statistics</strong></Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Assignments</small>
+                        <h5>{reportData.assignmentStats.total}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Active</small>
+                        <h5 className="text-success">{reportData.assignmentStats.active}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Inactive</small>
+                        <h5 className="text-secondary">{reportData.assignmentStats.inactive}</h5>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      {reportData.assignmentStats.total > 0 && (
+                        <div className="mt-3">
+                          <small className="text-muted">Active Rate</small>
+                          <ProgressBar
+                            variant="success"
+                            now={(reportData.assignmentStats.active / reportData.assignmentStats.total) * 100}
+                            className="mt-1"
+                            label={`${((reportData.assignmentStats.active / reportData.assignmentStats.total) * 100).toFixed(1)}%`}
+                          />
+                        </div>
+                      )}
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <strong>Monthly Payment Breakdown</strong>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  {Object.keys(reportData.monthlyPayments).length === 0 ? (
+                    <p className="text-muted mb-0">No payments in selected period</p>
+                  ) : (
+                    <Table striped bordered hover size="sm">
+                      <thead>
+                        <tr>
+                          <th>Month</th>
+                          <th>Total Payments</th>
+                          <th>Paid</th>
+                          <th>Unpaid</th>
+                          <th>Total Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(reportData.monthlyPayments).map(([month, data]) => (
+                          <tr key={month}>
+                            <td><strong>{month}</strong></td>
+                            <td>{data.total}</td>
+                            <td className="text-success">{data.paid}</td>
+                            <td className="text-warning">{data.unpaid}</td>
+                            <td>PKR {data.amount.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <strong>Export Reports</strong>
+                    <div className="d-flex gap-2">
+                      <Button size="sm" variant="outline-light" onClick={() => exportToCSV('summary')}>
+                        <i className="fas fa-file-csv me-2"></i>Summary
+                      </Button>
+                      <Button size="sm" variant="outline-light" onClick={() => exportToCSV('vehicles')}>
+                        <i className="fas fa-file-csv me-2"></i>Vehicles
+                      </Button>
+                      <Button size="sm" variant="outline-light" onClick={() => exportToCSV('trips')}>
+                        <i className="fas fa-file-csv me-2"></i>Trips
+                      </Button>
+                      <Button size="sm" variant="outline-light" onClick={() => exportToCSV('payments')}>
+                        <i className="fas fa-file-csv me-2"></i>Payments
+                      </Button>
+                    </div>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  <p className="text-muted mb-0">
+                    <i className="fas fa-info-circle me-2"></i>
+                    Export reports as CSV files. Select a date range above to filter the data before exporting.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row>
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Top Vehicles by Trips</strong></Card.Header>
+                <Card.Body>
+                  {Object.keys(reportData.vehicleStats.tripsCount).length === 0 ? (
+                    <p className="text-muted mb-0">No trips recorded in selected period</p>
+                  ) : (
+                    <Table striped bordered hover size="sm">
+                      <thead>
+                        <tr>
+                          <th>Vehicle</th>
+                          <th>Model</th>
+                          <th>Status</th>
+                          <th>Trips Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vehicles
+                          .filter(v => reportData.vehicleStats.tripsCount[v.id])
+                          .sort((a, b) => (reportData.vehicleStats.tripsCount[b.id] || 0) - (reportData.vehicleStats.tripsCount[a.id] || 0))
+                          .slice(0, 10)
+                          .map(v => (
+                            <tr key={v.id}>
+                              <td><strong>{v.number}</strong></td>
+                              <td>{v.model || 'N/A'}</td>
+                              <td><Badge bg={v.status === 'active' ? 'success' : 'warning'}>{v.status || 'active'}</Badge></td>
+                              <td>{reportData.vehicleStats.tripsCount[v.id] || 0}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
         </Tab>
       </Tabs>
         </Col>
