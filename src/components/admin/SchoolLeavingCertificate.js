@@ -42,6 +42,7 @@ const SchoolLeavingCertificate = () => {
     overallGrade: 'A+',
     remarks: ''
   });
+  const [schoolLogo, setSchoolLogo] = useState('');
 
   useEffect(() => {
     fetchSchoolProfile();
@@ -73,6 +74,9 @@ const SchoolLeavingCertificate = () => {
         }
         if (data.board) {
           setCertificateData(prev => ({ ...prev, boardName: data.board }));
+        }
+        if (data.logo) {
+          setSchoolLogo(data.logo);
         }
       }
     } catch (error) {
@@ -410,6 +414,7 @@ const SchoolLeavingCertificate = () => {
           </div>
           
           <div class="certificate-header">
+            ${schoolLogo ? `<img src="${schoolLogo}" style="height:70px;margin-bottom:8px;object-fit:contain;" />` : ''}
             <div class="school-name">${certificateData.schoolName}</div>
             <div class="school-address">${certificateData.schoolAddress}</div>
             <div class="school-address">Phone: ${certificateData.schoolPhone} | Email: ${certificateData.schoolEmail}</div>
@@ -775,6 +780,7 @@ const SchoolLeavingCertificate = () => {
             </div>
             
             <div class="certificate-header">
+              ${schoolLogo ? `<img src="${schoolLogo}" style="height:70px;margin-bottom:8px;object-fit:contain;" />` : ''}
               <div class="school-name">${certificateData.schoolName}</div>
               <div class="school-address">${certificateData.schoolAddress}</div>
               <div class="school-address">Phone: ${certificateData.schoolPhone} | Email: ${certificateData.schoolEmail}</div>
