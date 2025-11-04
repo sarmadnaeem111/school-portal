@@ -24,6 +24,9 @@ const UserManagement = () => {
     classId: '',
     parentId: '',
     rollNumber: '',
+    parentName: '',
+    parentCnic: '',
+    studentBFormNumber: '',
     gender: '',
     status: 'active'
   });
@@ -136,6 +139,9 @@ const UserManagement = () => {
             classId: formData.classId || '',
             parentId: processedUserData.parentId || '',
             rollNumber: formData.rollNumber || '',
+              parentName: formData.parentName || '',
+              parentCnic: formData.parentCnic || '',
+              studentBFormNumber: formData.studentBFormNumber || '',
             gender: formData.gender || '',
             status: formData.status || 'active',
             createdAt: new Date()
@@ -166,6 +172,9 @@ const UserManagement = () => {
         classId: '',
         parentId: '',
         rollNumber: '',
+        parentName: '',
+        parentCnic: '',
+        studentBFormNumber: '',
         gender: '',
         status: 'active'
       });
@@ -197,6 +206,9 @@ const UserManagement = () => {
       classId: user.classId || '',
       parentId: user.parentId || '',
       rollNumber: user.rollNumber || '',
+      parentName: user.parentName || '',
+      parentCnic: user.parentCnic || '',
+      studentBFormNumber: user.studentBFormNumber || '',
       gender: user.gender || '',
       status: user.status || 'active'
     });
@@ -400,6 +412,39 @@ const UserManagement = () => {
             </Row>
             {formData.role === 'student' && (
               <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Parent Name</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={formData.parentName}
+                      onChange={(e) => setFormData({...formData, parentName: e.target.value})}
+                      placeholder="Enter parent name"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Parent CNIC</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={formData.parentCnic}
+                      onChange={(e) => setFormData({...formData, parentCnic: e.target.value})}
+                      placeholder="xxxxx-xxxxxxx-x"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Student B Form Number</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={formData.studentBFormNumber}
+                      onChange={(e) => setFormData({...formData, studentBFormNumber: e.target.value})}
+                      placeholder="xxxxx-xxxxxxx-x"
+                    />
+                  </Form.Group>
+                </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Class</Form.Label>
