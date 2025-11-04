@@ -11,6 +11,7 @@ const ParentTimetable = () => {
   const [children, setChildren] = useState([]);
   const [selectedChildId, setSelectedChildId] = useState('');
   const [timetable, setTimetable] = useState(null);
+  const [teachersMap, setTeachersMap] = useState({});
 
   useEffect(() => {
     const loadChildren = async () => {
@@ -18,11 +19,26 @@ const ParentTimetable = () => {
       setLoading(true);
       setError('');
       try {
+        // Load teachers map in parallel
+        const teachersPromise = (async () => {
+          try {
+            const snap = await getDocs(collection(db, 'users'));
+            const map = {};
+            snap.docs.forEach(d => {
+              const data = d.data();
+              if (data.role === 'teacher') map[d.id] = data.name || '';
+            });
+            setTeachersMap(map);
+          } catch (_) {
+            setTeachersMap({});
+          }
+        })();
         const qy = query(collection(db, 'users'), where('role', '==', 'student'), where('parentId', '==', currentUser.uid));
         const snap = await getDocs(qy);
         const kids = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setChildren(kids);
         if (kids.length > 0) setSelectedChildId(kids[0].id);
+        await teachersPromise;
       } catch (e) {
         console.error(e);
         setError('Failed to load children.');
@@ -108,8 +124,13 @@ const ParentTimetable = () => {
                   <td><strong>{day}</strong></td>
                   {(timetable.slots || []).map(s => {
                     const cell = timetable.schedule?.[day]?.[s.id];
+                    if (!cell) return (<td key={`${day}-${s.id}`}>—</td>);
+                    const tName = cell.teacherName || (cell.teacherId ? (teachersMap[cell.teacherId] || '') : '');
                     return (
-                      <td key={`${day}-${s.id}`}>{cell ? (cell.subjectName || '—') : '—'}</td>
+                      <td key={`${day}-${s.id}`}>
+                        <div>{cell.subjectName || '—'}</div>
+                        {tName ? <div className="text-muted" style={{ fontSize: '0.9rem' }}>{tName}</div> : null}
+                      </td>
                     );
                   })}
                 </tr>
