@@ -5,6 +5,7 @@ import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import ModuleSidebar from '../common/ModuleSidebar';
+import FeeChalan from '../admin/FeeChalan';
 
 const gradientHeader = {
   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -221,6 +222,7 @@ const AccountsDashboard = () => {
           { key: 'overview', label: 'Overview', icon: 'fas fa-tachometer-alt', onClick: () => setActiveTab('overview') },
           { key: 'transactions', label: 'Transactions', icon: 'fas fa-receipt', onClick: () => setActiveTab('transactions') },
           { key: 'invoices', label: 'Invoices', icon: 'fas fa-file-invoice-dollar', onClick: () => setActiveTab('invoices') },
+          { key: 'feeChalan', label: 'Fee Chalan', icon: 'fas fa-file-invoice', onClick: () => setActiveTab('feeChalan') },
           { key: 'reports', label: 'Reports', icon: 'fas fa-chart-line', onClick: () => setActiveTab('reports') }
         ]}
       />)}
@@ -270,6 +272,9 @@ const AccountsDashboard = () => {
                 </Card>
               </Col>
             </Row>
+          </Tab>
+          <Tab eventKey="feeChalan" title="Fee Chalan">
+            <FeeChalan />
           </Tab>
 
           <Tab eventKey="transactions" title="Transactions">
