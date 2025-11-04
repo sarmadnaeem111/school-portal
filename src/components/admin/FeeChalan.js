@@ -38,6 +38,15 @@ const FeeChalan = () => {
     chalanNumber: '',
     remarks: ''
   });
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payingChalan, setPayingChalan] = useState(null);
+  const [paymentForm, setPaymentForm] = useState({
+    amountReceived: 0,
+    paymentMethod: 'cash',
+    referenceNo: '',
+    paidDate: new Date().toISOString().split('T')[0],
+    remarks: ''
+  });
 
   useEffect(() => {
     fetchClasses();
@@ -793,6 +802,117 @@ const FeeChalan = () => {
     }
   };
 
+  const openPayModal = (chalan) => {
+    setPayingChalan(chalan);
+    const total = Number(chalan?.fees?.totalAmount || 0);
+    setPaymentForm({
+      amountReceived: total,
+      paymentMethod: 'cash',
+      referenceNo: '',
+      paidDate: new Date().toISOString().split('T')[0],
+      remarks: ''
+    });
+    setShowPayModal(true);
+  };
+
+  const submitPayment = async () => {
+    if (!payingChalan) return;
+    try {
+      const chalanRef = doc(db, 'feeChalans', payingChalan.id);
+      await updateDoc(chalanRef, {
+        status: 'paid',
+        updatedAt: new Date(),
+        payment: {
+          amountReceived: Number(paymentForm.amountReceived) || 0,
+          paymentMethod: paymentForm.paymentMethod || 'cash',
+          referenceNo: paymentForm.referenceNo || null,
+          paidDate: paymentForm.paidDate || null,
+          remarks: paymentForm.remarks || null
+        },
+        paidAt: new Date()
+      });
+      setShowPayModal(false);
+      setMessage('Chalan paid successfully.');
+      setMessageType('success');
+      await fetchSavedChalans();
+    } catch (e) {
+      console.error('Payment failed', e);
+      setMessage('Failed to record payment');
+      setMessageType('danger');
+    }
+  };
+
+  const printPaidReceipt = (chalan) => {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) { setMessage('Popup blocked! Allow popups to print receipt.'); setMessageType('warning'); return; }
+    const fees = chalan.fees || {};
+    const payment = chalan.payment || {};
+    const totalAmount = fees.totalAmount || 0;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Paid Receipt - ${chalan.studentName}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+          .header { text-align: center; border-bottom: 3px solid #2c3e50; padding-bottom: 14px; margin-bottom: 20px; }
+          .title { font-size: 22px; color: #28a745; font-weight: bold; }
+          .section { margin-bottom: 16px; }
+          .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
+          .label { color: #555; font-weight: bold; }
+          .badge-paid { display:inline-block; background:#28a745; color:#fff; padding:6px 10px; border-radius:16px; font-weight:bold; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          th { background:#f5f5f5; }
+          .total { font-weight: bold; }
+          @media print { button { display:none; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="title">FEE CHALAN - PAID RECEIPT</div>
+          <div>${schoolProfile?.schoolName || 'School Portal'} | Printed: ${currentDate}</div>
+          <div class="badge-paid" style="margin-top:10px;">PAID</div>
+        </div>
+        <div class="section">
+          <div class="row"><span class="label">Student:</span><span>${chalan.studentName}</span></div>
+          <div class="row"><span class="label">Class:</span><span>${chalan.className}</span></div>
+          <div class="row"><span class="label">Chalan #:</span><span>${chalan.chalanNumber}</span></div>
+          <div class="row"><span class="label">Due Date:</span><span>${chalan.dueDate ? new Date(chalan.dueDate).toLocaleDateString() : 'As per schedule'}</span></div>
+        </div>
+        <div class="section">
+          <table>
+            <thead><tr><th>Fee Type</th><th>Amount (PKR)</th></tr></thead>
+            <tbody>
+              <tr><td>Monthly Tuition Fee</td><td>${(fees.monthlyTuition||0).toLocaleString()}</td></tr>
+              <tr><td>Examination Fee</td><td>${(fees.examinationFee||0).toLocaleString()}</td></tr>
+              <tr><td>Library Fee</td><td>${(fees.libraryFee||0).toLocaleString()}</td></tr>
+              <tr><td>Sports Fee</td><td>${(fees.sportsFee||0).toLocaleString()}</td></tr>
+              <tr><td>Transport Fee</td><td>${(fees.transportFee||0).toLocaleString()}</td></tr>
+              ${fees.otherFees>0?`<tr><td>${fees.otherFeeDescription||'Other Fees'}</td><td>${fees.otherFees.toLocaleString()}</td></tr>`:''}
+              <tr class="total"><td>Total</td><td>${(totalAmount).toLocaleString()}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section">
+          <div class="row"><span class="label">Amount Received:</span><span>PKR ${(Number(payment.amountReceived)||0).toLocaleString()}</span></div>
+          <div class="row"><span class="label">Payment Method:</span><span>${payment.paymentMethod || 'cash'}</span></div>
+          <div class="row"><span class="label">Reference #:</span><span>${payment.referenceNo || '-'}</span></div>
+          <div class="row"><span class="label">Paid Date:</span><span>${payment.paidDate ? new Date(payment.paidDate).toLocaleDateString() : (chalan.paidAt?.toDate ? chalan.paidAt.toDate().toLocaleDateString() : '')}</span></div>
+          <div class="row"><span class="label">Remarks:</span><span>${payment.remarks || '-'}</span></div>
+        </div>
+        <div style="text-align:center; margin-top:20px;">
+          <button onclick="window.print()">Print Receipt</button>
+        </div>
+      </body>
+      </html>
+    `);
+    try { printWindow.document.close(); } catch(_) {}
+  };
+
   const printSavedChalan = (chalan) => {
     const currentDate = new Date().toLocaleDateString('en-US', {
       year: 'numeric',
@@ -1459,15 +1579,39 @@ const FeeChalan = () => {
                            chalan.createdAt ? new Date(chalan.createdAt.toDate()).toLocaleDateString() : 'N/A'}
                         </td>
                         <td>
-                          <Button 
-                            variant="outline-primary btn-enhanced" 
-                            size="sm"
-                            onClick={() => printSavedChalan(chalan)}
-                            title="Print Fee Chalan"
-                          >
-                            <i className="fas fa-print me-1"></i>
-                            Print
-                          </Button>
+                          <div className="d-flex gap-2">
+                            {chalan.status !== 'paid' && (
+                              <Button 
+                                variant="outline-success btn-enhanced" 
+                                size="sm"
+                                onClick={() => openPayModal(chalan)}
+                                title="Pay Chalan"
+                              >
+                                <i className="fas fa-money-bill-wave me-1"></i>
+                                Pay
+                              </Button>
+                            )}
+                            <Button 
+                              variant="outline-primary btn-enhanced" 
+                              size="sm"
+                              onClick={() => printSavedChalan(chalan)}
+                              title="Print Fee Chalan"
+                            >
+                              <i className="fas fa-print me-1"></i>
+                              Print
+                            </Button>
+                            {chalan.status === 'paid' && (
+                              <Button 
+                                variant="outline-secondary btn-enhanced" 
+                                size="sm"
+                                onClick={() => printPaidReceipt(chalan)}
+                                title="Print Paid Receipt"
+                              >
+                                <i className="fas fa-receipt me-1"></i>
+                                Receipt
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1981,6 +2125,76 @@ const FeeChalan = () => {
           >
             <i className="fas fa-print me-2"></i>
             Generate & Save Fee Chalan
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Pay Chalan Modal */}
+      <Modal show={showPayModal} onHide={() => setShowPayModal(false)} centered>
+        <Modal.Header closeButton style={{ 
+          background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+          color: 'white',
+          border: 'none'
+        }}>
+          <Modal.Title>
+            <i className="fas fa-money-bill-wave me-2"></i>
+            Pay Chalan {payingChalan ? `- ${payingChalan.studentName}` : ''}
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4">
+          {payingChalan && (
+            <>
+              <Row className="mb-3">
+                <Col md={6}>
+                  <div className="text-muted">Chalan #</div>
+                  <div className="fw-bold">{payingChalan.chalanNumber}</div>
+                </Col>
+                <Col md={6}>
+                  <div className="text-muted">Total Amount</div>
+                  <div className="fw-bold">PKR {(payingChalan.fees?.totalAmount || 0).toLocaleString()}</div>
+                </Col>
+              </Row>
+              <Form>
+                <Form.Group className="mb-3">
+                  <Form.Label>Amount Received (PKR)</Form.Label>
+                  <Form.Control type="number" value={paymentForm.amountReceived} onChange={(e)=>setPaymentForm({...paymentForm, amountReceived: e.target.value})} />
+                </Form.Group>
+                <Row>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Payment Method</Form.Label>
+                      <Form.Select value={paymentForm.paymentMethod} onChange={(e)=>setPaymentForm({...paymentForm, paymentMethod: e.target.value})}>
+                        <option value="cash">Cash</option>
+                        <option value="bank">Bank Transfer</option>
+                        <option value="card">Card</option>
+                      </Form.Select>
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Paid Date</Form.Label>
+                      <Form.Control type="date" value={paymentForm.paidDate} onChange={(e)=>setPaymentForm({...paymentForm, paidDate: e.target.value})} />
+                    </Form.Group>
+                  </Col>
+                </Row>
+                <Form.Group className="mb-3">
+                  <Form.Label>Reference No (optional)</Form.Label>
+                  <Form.Control value={paymentForm.referenceNo} onChange={(e)=>setPaymentForm({...paymentForm, referenceNo: e.target.value})} placeholder="Transaction/Slip reference" />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Remarks</Form.Label>
+                  <Form.Control as="textarea" rows={2} value={paymentForm.remarks} onChange={(e)=>setPaymentForm({...paymentForm, remarks: e.target.value})} />
+                </Form.Group>
+              </Form>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary btn-enhanced" onClick={() => setShowPayModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="success btn-enhanced" onClick={submitPayment}>
+            <i className="fas fa-check me-2"></i>Pay
           </Button>
         </Modal.Footer>
       </Modal>
