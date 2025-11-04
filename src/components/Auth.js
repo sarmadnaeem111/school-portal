@@ -17,6 +17,9 @@ const Auth = () => {
   const [rollNumber, setRollNumber] = useState('');
   const [classId, setClassId] = useState('');
   const [parentId, setParentId] = useState('');
+  const [parentName, setParentName] = useState('');
+  const [parentCnic, setParentCnic] = useState('');
+  const [studentBFormNumber, setStudentBFormNumber] = useState('');
   const [classes, setClasses] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -181,6 +184,21 @@ const Auth = () => {
           setLoading(false);
           return;
         }
+        if (!parentName) {
+          setError('Please enter parent name.');
+          setLoading(false);
+          return;
+        }
+        if (!parentCnic) {
+          setError('Please enter parent CNIC.');
+          setLoading(false);
+          return;
+        }
+        if (!studentBFormNumber) {
+          setError('Please enter Student B Form Number.');
+          setLoading(false);
+          return;
+        }
       }
       
       const userData = {
@@ -189,7 +207,7 @@ const Auth = () => {
         gender,
         phone,
         address,
-        ...(role === 'student' && { rollNumber, classId, parentId })
+        ...(role === 'student' && { rollNumber, classId, parentId, parentName, parentCnic, studentBFormNumber })
       };
       
       await signup(email, password, userData);
@@ -470,6 +488,53 @@ const Auth = () => {
                     
                       {role === 'student' && (
                         <>
+                          <Form.Group className="mb-3">
+                            <Form.Label style={{ fontWeight: 600, color: '#475569' }}>
+                              <i className="fas fa-user me-2" style={{ color: '#667eea' }}></i>
+                              Parent Name
+                            </Form.Label>
+                            <Form.Control
+                              type="text"
+                              value={parentName}
+                              onChange={(e) => setParentName(e.target.value)}
+                              className="form-control-enhanced"
+                              placeholder="Enter parent name"
+                            />
+                          </Form.Group>
+
+                          <Row>
+                            <Col md={6}>
+                              <Form.Group className="mb-3">
+                                <Form.Label style={{ fontWeight: 600, color: '#475569' }}>
+                                  <i className="fas fa-id-card me-2" style={{ color: '#667eea' }}></i>
+                                  Parent CNIC
+                                </Form.Label>
+                                <Form.Control
+                                  type="text"
+                                  value={parentCnic}
+                                  onChange={(e) => setParentCnic(e.target.value)}
+                                  className="form-control-enhanced"
+                                  placeholder="xxxxx-xxxxxxx-x"
+                                />
+                              </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                              <Form.Group className="mb-3">
+                                <Form.Label style={{ fontWeight: 600, color: '#475569' }}>
+                                  <i className="fas fa-id-badge me-2" style={{ color: '#667eea' }}></i>
+                                  Student B Form Number
+                                </Form.Label>
+                                <Form.Control
+                                  type="text"
+                                  value={studentBFormNumber}
+                                  onChange={(e) => setStudentBFormNumber(e.target.value)}
+                                  className="form-control-enhanced"
+                                  placeholder="xxxxx-xxxxxxx-x"
+                                />
+                              </Form.Group>
+                            </Col>
+                          </Row>
+
                           <Form.Group className="mb-3">
                             <Form.Label style={{ fontWeight: 600, color: '#475569' }}>
                               <i className="fas fa-id-card me-2" style={{ color: '#667eea' }}></i>
