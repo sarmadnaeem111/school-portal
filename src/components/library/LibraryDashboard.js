@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Tabs, Tab, Card, Row, Col, Form, Button, Table, Alert, Badge } from 'react-bootstrap';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Tabs, Tab, Card, Row, Col, Form, Button, Table, Alert, Badge, ProgressBar } from 'react-bootstrap';
 import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,6 +27,7 @@ const LibraryDashboard = () => {
 
   const [bookForm, setBookForm] = useState({ title: '', author: '', isbn: '', copies: 1, status: 'available' });
   const [issueForm, setIssueForm] = useState({ studentId: '', bookId: '', status: 'issued' });
+  const [reportDateRange, setReportDateRange] = useState({ start: '', end: '' });
 
   useEffect(() => {
     loadAll();
@@ -110,6 +111,130 @@ const LibraryDashboard = () => {
   const getName = (id) => (students.find(s => s.id === id)?.name) || 'N/A';
   const getBookTitle = (id) => (books.find(b => b.id === id)?.title) || 'N/A';
 
+  // Report calculations
+  const reportData = useMemo(() => {
+    const filteredIssues = issues.filter(i => {
+      if (!reportDateRange.start && !reportDateRange.end) return true;
+      const issueDate = i.issuedAt?.toDate ? i.issuedAt.toDate().toISOString().split('T')[0] : 
+                       (i.createdAt?.toDate ? i.createdAt.toDate().toISOString().split('T')[0] : '');
+      if (reportDateRange.start && issueDate < reportDateRange.start) return false;
+      if (reportDateRange.end && issueDate > reportDateRange.end) return false;
+      return true;
+    });
+
+    const bookStats = {
+      total: books.length,
+      available: books.filter(b => b.status === 'available').length,
+      unavailable: books.filter(b => b.status === 'unavailable').length,
+      totalCopies: books.reduce((sum, b) => sum + (Number(b.copies) || 0), 0),
+      issuedCopies: 0,
+      availableCopies: 0
+    };
+
+    // Calculate issued and available copies
+    books.forEach(book => {
+      const issuedCount = issues.filter(i => i.bookId === book.id && i.status !== 'returned').length;
+      bookStats.issuedCopies += issuedCount;
+      bookStats.availableCopies += Math.max(0, (Number(book.copies) || 0) - issuedCount);
+    });
+
+    const issueStats = {
+      total: filteredIssues.length,
+      issued: filteredIssues.filter(i => i.status !== 'returned').length,
+      returned: filteredIssues.filter(i => i.status === 'returned').length,
+      overdue: 0 // Can be calculated if dueDate is added
+    };
+
+    const bookPopularity = {};
+    filteredIssues.forEach(i => {
+      if (!bookPopularity[i.bookId]) {
+        bookPopularity[i.bookId] = { title: getBookTitle(i.bookId), count: 0 };
+      }
+      bookPopularity[i.bookId].count++;
+    });
+
+    const studentActivity = {};
+    filteredIssues.forEach(i => {
+      if (!studentActivity[i.studentId]) {
+        studentActivity[i.studentId] = { name: getName(i.studentId), count: 0 };
+      }
+      studentActivity[i.studentId].count++;
+    });
+
+    const monthlyIssues = {};
+    filteredIssues.forEach(i => {
+      const date = i.issuedAt?.toDate ? i.issuedAt.toDate() : 
+                   (i.createdAt?.toDate ? i.createdAt.toDate() : new Date());
+      const month = date.toISOString().slice(0, 7); // YYYY-MM format
+      if (!monthlyIssues[month]) {
+        monthlyIssues[month] = { issued: 0, returned: 0, total: 0 };
+      }
+      monthlyIssues[month].total++;
+      if (i.status === 'returned') {
+        monthlyIssues[month].returned++;
+      } else {
+        monthlyIssues[month].issued++;
+      }
+    });
+
+    return {
+      issues: filteredIssues,
+      bookStats,
+      issueStats,
+      bookPopularity,
+      studentActivity,
+      monthlyIssues
+    };
+  }, [books, issues, students, reportDateRange]);
+
+  const exportToCSV = (type) => {
+    let csvContent = '';
+    let filename = '';
+
+    if (type === 'books') {
+      csvContent = 'Title,Author,ISBN,Copies,Status,Issued Copies,Available Copies\n';
+      books.forEach(b => {
+        const issuedCount = issues.filter(i => i.bookId === b.id && i.status !== 'returned').length;
+        const availableCount = Math.max(0, (Number(b.copies) || 0) - issuedCount);
+        csvContent += `"${(b.title || '').replace(/"/g, '""')}","${(b.author || '').replace(/"/g, '""')}",${b.isbn || ''},${b.copies || 0},${b.status || 'available'},${issuedCount},${availableCount}\n`;
+      });
+      filename = `library_books_report_${new Date().toISOString().split('T')[0]}.csv`;
+    } else if (type === 'issues') {
+      csvContent = 'Student,Book,Status,Issue Date,Return Date\n';
+      reportData.issues.forEach(i => {
+        const studentName = getName(i.studentId);
+        const bookTitle = getBookTitle(i.bookId);
+        const issueDate = i.issuedAt?.toDate ? i.issuedAt.toDate().toISOString().split('T')[0] : 
+                         (i.createdAt?.toDate ? i.createdAt.toDate().toISOString().split('T')[0] : '');
+        const returnDate = i.returnedAt?.toDate ? i.returnedAt.toDate().toISOString().split('T')[0] : '';
+        csvContent += `"${studentName.replace(/"/g, '""')}","${bookTitle.replace(/"/g, '""')}",${i.status || 'issued'},${issueDate},${returnDate}\n`;
+      });
+      filename = `library_issues_report_${new Date().toISOString().split('T')[0]}.csv`;
+    } else {
+      // Summary report
+      csvContent = 'Report Type,Value\n';
+      csvContent += `Total Books,${reportData.bookStats.total}\n`;
+      csvContent += `Available Books,${reportData.bookStats.available}\n`;
+      csvContent += `Unavailable Books,${reportData.bookStats.unavailable}\n`;
+      csvContent += `Total Copies,${reportData.bookStats.totalCopies}\n`;
+      csvContent += `Issued Copies,${reportData.bookStats.issuedCopies}\n`;
+      csvContent += `Available Copies,${reportData.bookStats.availableCopies}\n`;
+      csvContent += `\nIssue Statistics\n`;
+      csvContent += `Total Issues,${reportData.issueStats.total}\n`;
+      csvContent += `Currently Issued,${reportData.issueStats.issued}\n`;
+      csvContent += `Returned,${reportData.issueStats.returned}\n`;
+      filename = `library_summary_report_${new Date().toISOString().split('T')[0]}.csv`;
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    setMessage('Report exported successfully');
+    setMessageType('success');
+  };
+
   const isAdminView = userRole === 'admin';
 
   return (
@@ -124,7 +249,8 @@ const LibraryDashboard = () => {
         items={[
           { key: 'overview', label: 'Overview', icon: 'fas fa-tachometer-alt', onClick: () => setActiveTab('overview') },
           { key: 'books', label: 'Books', icon: 'fas fa-book', onClick: () => setActiveTab('books') },
-          { key: 'issues', label: 'Issues', icon: 'fas fa-exchange-alt', onClick: () => setActiveTab('issues') }
+          { key: 'issues', label: 'Issues', icon: 'fas fa-exchange-alt', onClick: () => setActiveTab('issues') },
+          { key: 'reports', label: 'Reports', icon: 'fas fa-chart-line', onClick: () => setActiveTab('reports') }
         ]}
       />)}
       <div className="flex-grow-1 d-flex flex-column container-enhanced">
@@ -318,6 +444,363 @@ const LibraryDashboard = () => {
                           </td>
                         </tr>
                       ))}
+                    </tbody>
+                  </Table>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+        </Tab>
+
+        <Tab eventKey="reports" title="Reports">
+          <Row className="mb-3">
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Date Range Filter</strong></Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label>Start Date</Form.Label>
+                        <Form.Control
+                          type="date"
+                          value={reportDateRange.start}
+                          onChange={(e) => setReportDateRange({ ...reportDateRange, start: e.target.value })}
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label>End Date</Form.Label>
+                        <Form.Control
+                          type="date"
+                          value={reportDateRange.end}
+                          onChange={(e) => setReportDateRange({ ...reportDateRange, end: e.target.value })}
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4} className="d-flex align-items-end">
+                      <Button
+                        variant="outline-secondary"
+                        onClick={() => setReportDateRange({ start: '', end: '' })}
+                        className="w-100"
+                      >
+                        <i className="fas fa-times me-2"></i>Clear Filter
+                      </Button>
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={3}>
+              <Card className="card-enhanced">
+                <Card.Header style={{ background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', color: 'white' }}>
+                  <strong>Total Books</strong>
+                </Card.Header>
+                <Card.Body>
+                  <h4 className="mb-0">{reportData.bookStats.total}</h4>
+                  <small className="text-muted">All books</small>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="card-enhanced">
+                <Card.Header style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
+                  <strong>Total Copies</strong>
+                </Card.Header>
+                <Card.Body>
+                  <h4 className="mb-0">{reportData.bookStats.totalCopies}</h4>
+                  <small className="text-muted">All copies</small>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="card-enhanced">
+                <Card.Header style={{ background: 'linear-gradient(135deg, #ee0979 0%, #ff6a00 100%)', color: 'white' }}>
+                  <strong>Issued Copies</strong>
+                </Card.Header>
+                <Card.Body>
+                  <h4 className="mb-0">{reportData.bookStats.issuedCopies}</h4>
+                  <small className="text-muted">Currently issued</small>
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={3}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}>
+                  <strong>Utilization</strong>
+                </Card.Header>
+                <Card.Body>
+                  <h4 className="mb-0">
+                    {reportData.bookStats.totalCopies > 0 
+                      ? `${((reportData.bookStats.issuedCopies / reportData.bookStats.totalCopies) * 100).toFixed(1)}%`
+                      : '0%'}
+                  </h4>
+                  <ProgressBar
+                    variant={reportData.bookStats.totalCopies > 0 && (reportData.bookStats.issuedCopies / reportData.bookStats.totalCopies) >= 0.7 ? 'success' : 'warning'}
+                    now={reportData.bookStats.totalCopies > 0 ? (reportData.bookStats.issuedCopies / reportData.bookStats.totalCopies) * 100 : 0}
+                    className="mt-2"
+                  />
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={6}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Book Statistics</strong></Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Books</small>
+                        <h5>{reportData.bookStats.total}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Available</small>
+                        <h5 className="text-success">{reportData.bookStats.available}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Unavailable</small>
+                        <h5 className="text-secondary">{reportData.bookStats.unavailable}</h5>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Copies</small>
+                        <h5>{reportData.bookStats.totalCopies}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Issued Copies</small>
+                        <h5 className="text-warning">{reportData.bookStats.issuedCopies}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Available Copies</small>
+                        <h5 className="text-success">{reportData.bookStats.availableCopies}</h5>
+                      </div>
+                    </Col>
+                  </Row>
+                  {reportData.bookStats.totalCopies > 0 && (
+                    <div className="mt-3">
+                      <small className="text-muted">Copy Utilization Rate</small>
+                      <ProgressBar
+                        variant={reportData.bookStats.issuedCopies / reportData.bookStats.totalCopies >= 0.7 ? 'success' : 'warning'}
+                        now={(reportData.bookStats.issuedCopies / reportData.bookStats.totalCopies) * 100}
+                        className="mt-1"
+                        label={`${((reportData.bookStats.issuedCopies / reportData.bookStats.totalCopies) * 100).toFixed(1)}%`}
+                      />
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={6}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Issue Statistics</strong></Card.Header>
+                <Card.Body>
+                  <Row>
+                    <Col md={6}>
+                      <div className="mb-3">
+                        <small className="text-muted">Total Issues</small>
+                        <h5>{reportData.issueStats.total}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Currently Issued</small>
+                        <h5 className="text-warning">{reportData.issueStats.issued}</h5>
+                      </div>
+                      <div className="mb-3">
+                        <small className="text-muted">Returned</small>
+                        <h5 className="text-success">{reportData.issueStats.returned}</h5>
+                      </div>
+                    </Col>
+                    <Col md={6}>
+                      {reportData.issueStats.total > 0 && (
+                        <div className="mt-3">
+                          <small className="text-muted">Return Rate</small>
+                          <ProgressBar
+                            variant="success"
+                            now={(reportData.issueStats.returned / reportData.issueStats.total) * 100}
+                            className="mt-1"
+                            label={`${((reportData.issueStats.returned / reportData.issueStats.total) * 100).toFixed(1)}%`}
+                          />
+                        </div>
+                      )}
+                    </Col>
+                  </Row>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <strong>Monthly Issue Breakdown</strong>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  {Object.keys(reportData.monthlyIssues).length === 0 ? (
+                    <p className="text-muted mb-0">No issues in selected period</p>
+                  ) : (
+                    <Table striped bordered hover size="sm">
+                      <thead>
+                        <tr>
+                          <th>Month</th>
+                          <th>Total Issues</th>
+                          <th>Issued</th>
+                          <th>Returned</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(reportData.monthlyIssues).map(([month, data]) => (
+                          <tr key={month}>
+                            <td><strong>{month}</strong></td>
+                            <td>{data.total}</td>
+                            <td className="text-warning">{data.issued}</td>
+                            <td className="text-success">{data.returned}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={6}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Most Popular Books</strong></Card.Header>
+                <Card.Body>
+                  {Object.keys(reportData.bookPopularity).length === 0 ? (
+                    <p className="text-muted mb-0">No issues recorded in selected period</p>
+                  ) : (
+                    <Table striped bordered hover size="sm">
+                      <thead>
+                        <tr>
+                          <th>Book Title</th>
+                          <th>Issues Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.values(reportData.bookPopularity)
+                          .sort((a, b) => b.count - a.count)
+                          .slice(0, 10)
+                          .map((book, idx) => (
+                            <tr key={idx}>
+                              <td>{book.title}</td>
+                              <td><Badge bg="info">{book.count}</Badge></td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col md={6}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Most Active Students</strong></Card.Header>
+                <Card.Body>
+                  {Object.keys(reportData.studentActivity).length === 0 ? (
+                    <p className="text-muted mb-0">No issues recorded in selected period</p>
+                  ) : (
+                    <Table striped bordered hover size="sm">
+                      <thead>
+                        <tr>
+                          <th>Student Name</th>
+                          <th>Issues Count</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.values(reportData.studentActivity)
+                          .sort((a, b) => b.count - a.count)
+                          .slice(0, 10)
+                          .map((student, idx) => (
+                            <tr key={idx}>
+                              <td>{student.name}</td>
+                              <td><Badge bg="success">{student.count}</Badge></td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <strong>Export Reports</strong>
+                    <div className="d-flex gap-2">
+                      <Button size="sm" variant="outline-light" onClick={() => exportToCSV('summary')}>
+                        <i className="fas fa-file-csv me-2"></i>Summary
+                      </Button>
+                      <Button size="sm" variant="outline-light" onClick={() => exportToCSV('books')}>
+                        <i className="fas fa-file-csv me-2"></i>Books
+                      </Button>
+                      <Button size="sm" variant="outline-light" onClick={() => exportToCSV('issues')}>
+                        <i className="fas fa-file-csv me-2"></i>Issues
+                      </Button>
+                    </div>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  <p className="text-muted mb-0">
+                    <i className="fas fa-info-circle me-2"></i>
+                    Export reports as CSV files. Select a date range above to filter the data before exporting.
+                  </p>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
+          <Row>
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={gradientHeader}><strong>Book Inventory Details</strong></Card.Header>
+                <Card.Body>
+                  <Table responsive striped bordered hover size="sm" className="table-enhanced">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>ISBN</th>
+                        <th>Total Copies</th>
+                        <th>Issued</th>
+                        <th>Available</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {books.map(b => {
+                        const issuedCount = issues.filter(i => i.bookId === b.id && i.status !== 'returned').length;
+                        const availableCount = Math.max(0, (Number(b.copies) || 0) - issuedCount);
+                        return (
+                          <tr key={b.id}>
+                            <td><strong>{b.title}</strong></td>
+                            <td>{b.author || 'N/A'}</td>
+                            <td>{b.isbn || 'N/A'}</td>
+                            <td>{b.copies || 0}</td>
+                            <td className={issuedCount > 0 ? 'text-warning' : ''}>{issuedCount}</td>
+                            <td className={availableCount === 0 ? 'text-danger' : availableCount === b.copies ? 'text-success' : 'text-info'}>
+                              {availableCount}
+                            </td>
+                            <td><Badge bg={b.status === 'available' ? 'success' : 'secondary'}>{b.status || 'available'}</Badge></td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </Table>
                 </Card.Body>
