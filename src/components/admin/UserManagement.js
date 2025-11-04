@@ -27,6 +27,7 @@ const UserManagement = () => {
     parentName: '',
     parentCnic: '',
     studentBFormNumber: '',
+    dob: '',
     gender: '',
     status: 'active'
   });
@@ -142,6 +143,7 @@ const UserManagement = () => {
               parentName: formData.parentName || '',
               parentCnic: formData.parentCnic || '',
               studentBFormNumber: formData.studentBFormNumber || '',
+            dob: formData.dob || '',
             gender: formData.gender || '',
             status: formData.status || 'active',
             createdAt: new Date()
@@ -175,6 +177,7 @@ const UserManagement = () => {
         parentName: '',
         parentCnic: '',
         studentBFormNumber: '',
+        dob: '',
         gender: '',
         status: 'active'
       });
@@ -209,6 +212,7 @@ const UserManagement = () => {
       parentName: user.parentName || '',
       parentCnic: user.parentCnic || '',
       studentBFormNumber: user.studentBFormNumber || '',
+      dob: user.dob || '',
       gender: user.gender || '',
       status: user.status || 'active'
     });
@@ -412,6 +416,16 @@ const UserManagement = () => {
             </Row>
             {formData.role === 'student' && (
               <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Date of Birth</Form.Label>
+                    <Form.Control
+                      type="date"
+                      value={formData.dob}
+                      onChange={(e) => setFormData({...formData, dob: e.target.value})}
+                    />
+                  </Form.Group>
+                </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Parent Name</Form.Label>
