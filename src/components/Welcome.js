@@ -120,6 +120,15 @@ const Welcome = () => {
                       </p>
                     </div>
                   </Col>
+                  <Col xs={12} sm={6} md={6} lg={3} className="mb-4 mb-lg-0">
+                    <div className="role-card shadow-sm">
+                      <i className="fas fa-hotel"></i>
+                      <h4 style={{ color: '#667eea', fontWeight: 700, whiteSpace: 'nowrap' }}>Cafeteria</h4>
+                      <p className="text-muted mb-0" style={{ fontSize: '0.9rem' }}>
+                        Manage meals, orders and payments
+                      </p>
+                    </div>
+                  </Col>
                 </Row>
                 
                 <div className="mt-5 pt-3">
