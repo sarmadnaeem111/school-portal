@@ -20,6 +20,7 @@ const Auth = () => {
   const [parentName, setParentName] = useState('');
   const [parentCnic, setParentCnic] = useState('');
   const [studentBFormNumber, setStudentBFormNumber] = useState('');
+  const [dob, setDob] = useState('');
   const [classes, setClasses] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -207,7 +208,7 @@ const Auth = () => {
         gender,
         phone,
         address,
-        ...(role === 'student' && { rollNumber, classId, parentId, parentName, parentCnic, studentBFormNumber })
+        ...(role === 'student' && { rollNumber, classId, parentId, parentName, parentCnic, studentBFormNumber, dob })
       };
       
       await signup(email, password, userData);
@@ -488,6 +489,22 @@ const Auth = () => {
                     
                       {role === 'student' && (
                         <>
+                          <Row>
+                            <Col md={6}>
+                              <Form.Group className="mb-3">
+                                <Form.Label style={{ fontWeight: 600, color: '#475569' }}>
+                                  <i className="fas fa-birthday-cake me-2" style={{ color: '#667eea' }}></i>
+                                  Date of Birth
+                                </Form.Label>
+                                <Form.Control
+                                  type="date"
+                                  value={dob}
+                                  onChange={(e) => setDob(e.target.value)}
+                                  className="form-control-enhanced"
+                                />
+                              </Form.Group>
+                            </Col>
+                          </Row>
                           <Form.Group className="mb-3">
                             <Form.Label style={{ fontWeight: 600, color: '#475569' }}>
                               <i className="fas fa-user me-2" style={{ color: '#667eea' }}></i>
