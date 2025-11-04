@@ -318,6 +318,7 @@ const AdminResults = () => {
       </head>
       <body>
         <div class="header">
+          ${schoolProfile.logo ? `<img src="${schoolProfile.logo}" style="height:80px;margin-bottom:10px;object-fit:contain;" />` : ''}
           <div class="school-name">${schoolProfile.schoolName || 'School Portal'}</div>
           <div>Student Academic Results</div>
           <div style="font-size: 14px; color: #6c757d;">Generated on: ${currentDate}</div>
@@ -485,6 +486,7 @@ const AdminResults = () => {
         ${filteredResults.map(result => `
           <div class="page">
             <div class="header">
+              ${schoolProfile.logo ? `<img src="${schoolProfile.logo}" style="height:80px;margin-bottom:10px;object-fit:contain;" />` : ''}
               <div class="school-name">${schoolProfile.schoolName || 'School Portal'}</div>
               <div>Student Academic Results</div>
               <div style="font-size: 14px; color: #6c757d;">Generated on: ${currentDate}</div>
