@@ -107,10 +107,12 @@ const AdminTimetable = () => {
             const subj = classSubjects[(subjectIndex + attempts) % classSubjects.length];
             const tId = subj.teacherId || cls.teacherId || null;
             if (!tId || !teacherBusy(schedule, tId, day, slot.id)) {
+              const tName = tId ? (teachers.find(t => t.id === tId)?.name || '') : '';
               schedule[cls.id][day][slot.id] = {
                 subjectId: subj.id,
                 subjectName: subj.name,
                 teacherId: tId,
+                teacherName: tName,
               };
               subjectIndex = (subjectIndex + 1) % classSubjects.length;
               placed = true;
@@ -123,6 +125,7 @@ const AdminTimetable = () => {
               subjectId: null,
               subjectName: 'Break',
               teacherId: null,
+              teacherName: '',
             };
           }
         }
@@ -228,10 +231,12 @@ const AdminTimetable = () => {
     if (!nextSchedule[editDay]) nextSchedule[editDay] = {};
     nextSchedule[editDay] = { ...nextSchedule[editDay] };
     if (subj) {
+      const tName = subj.teacherId ? (teachers.find(t => t.id === subj.teacherId)?.name || '') : '';
       nextSchedule[editDay][editSlotId] = {
         subjectId: subj.id,
         subjectName: subj.name,
         teacherId: subj.teacherId || null,
+        teacherName: tName,
       };
     } else {
       // Clearing the slot
@@ -239,6 +244,7 @@ const AdminTimetable = () => {
         subjectId: null,
         subjectName: 'Break',
         teacherId: null,
+        teacherName: '',
       };
     }
 
@@ -386,6 +392,9 @@ const AdminTimetable = () => {
                           {cell ? (
                             <div>
                               <div>{cell.subjectName || '—'}</div>
+                              {cell.teacherName ? (
+                                <div className="text-muted" style={{ fontSize: '0.85rem' }}>{cell.teacherName}</div>
+                              ) : null}
                             </div>
                           ) : '—'}
                         </td>
