@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Table, Alert, Spinner } from 'react-bootstrap';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase/config';
 
@@ -10,6 +10,7 @@ const StudentTimetable = () => {
   const [error, setError] = useState('');
   const [userDoc, setUserDoc] = useState(null);
   const [timetable, setTimetable] = useState(null);
+  const [teachersMap, setTeachersMap] = useState({});
 
   useEffect(() => {
     const load = async () => {
@@ -17,6 +18,20 @@ const StudentTimetable = () => {
       setLoading(true);
       setError('');
       try {
+        // Load teacher map in parallel
+        const teachersPromise = (async () => {
+          try {
+            const snap = await getDocs(collection(db, 'users'));
+            const map = {};
+            snap.docs.forEach(d => {
+              const data = d.data();
+              if (data.role === 'teacher') map[d.id] = data.name || '';
+            });
+            setTeachersMap(map);
+          } catch (_) {
+            setTeachersMap({});
+          }
+        })();
         const userRef = doc(db, 'users', currentUser.uid);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
@@ -39,6 +54,7 @@ const StudentTimetable = () => {
           return;
         }
         setTimetable(ttSnap.data());
+        await teachersPromise;
       } catch (e) {
         console.error(e);
         setError('Failed to load timetable.');
@@ -79,8 +95,13 @@ const StudentTimetable = () => {
                 <td><strong>{day}</strong></td>
                 {slots.map(s => {
                   const cell = schedule?.[day]?.[s.id];
+                  if (!cell) return (<td key={`${day}-${s.id}`}>—</td>);
+                  const tName = cell.teacherName || (cell.teacherId ? (teachersMap[cell.teacherId] || '') : '');
                   return (
-                    <td key={`${day}-${s.id}`}>{cell ? (cell.subjectName || '—') : '—'}</td>
+                    <td key={`${day}-${s.id}`}>
+                      <div>{cell.subjectName || '—'}</div>
+                      {tName ? <div className="text-muted" style={{ fontSize: '0.9rem' }}>{tName}</div> : null}
+                    </td>
                   );
                 })}
               </tr>
