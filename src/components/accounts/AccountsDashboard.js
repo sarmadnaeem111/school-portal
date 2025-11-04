@@ -25,6 +25,7 @@ const AccountsDashboard = () => {
   const [students, setStudents] = useState([]);
   const [transactions, setTransactions] = useState([]); // income/expense
   const [invoices, setInvoices] = useState([]);
+  const [chalans, setChalans] = useState([]);
 
   const [txnForm, setTxnForm] = useState({ type: 'income', category: 'fee', amount: '', date: '', description: '' });
   const [invoiceForm, setInvoiceForm] = useState({ studentId: '', amount: '', dueDate: '', status: 'unpaid' });
@@ -37,14 +38,16 @@ const AccountsDashboard = () => {
   const loadAll = async () => {
     try {
       setLoading(true);
-      const [stuSnap, txnSnap, invSnap] = await Promise.all([
+      const [stuSnap, txnSnap, invSnap, chSnap] = await Promise.all([
         getDocs(query(collection(db, 'users'), where('role','==','student'))),
         getDocs(collection(db, 'accountsTransactions')),
-        getDocs(collection(db, 'accountsInvoices'))
+        getDocs(collection(db, 'accountsInvoices')),
+        getDocs(collection(db, 'feeChalans'))
       ]);
       setStudents(stuSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setTransactions(txnSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setInvoices(invSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setChalans(chSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       setMessage('Error loading accounts data');
       setMessageType('danger');
@@ -132,6 +135,14 @@ const AccountsDashboard = () => {
       return true;
     });
 
+    const filteredChalans = chalans.filter(c => {
+      if (!reportDateRange.start && !reportDateRange.end) return true;
+      const chDate = c.dueDate || (c.createdAt?.toDate ? c.createdAt.toDate().toISOString().split('T')[0] : '');
+      if (reportDateRange.start && chDate < reportDateRange.start) return false;
+      if (reportDateRange.end && chDate > reportDateRange.end) return false;
+      return true;
+    });
+
     const reportIncome = filteredTransactions.reduce((sum, t) => sum + ((t.type === 'income' ? Number(t.amount) : 0) || 0), 0);
     const reportExpense = filteredTransactions.reduce((sum, t) => sum + ((t.type === 'expense' ? Number(t.amount) : 0) || 0), 0);
     const netProfit = reportIncome - reportExpense;
@@ -153,16 +164,28 @@ const AccountsDashboard = () => {
       unpaidAmount: filteredInvoices.filter(i => i.status !== 'paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0)
     };
 
+    const chalanStats = {
+      total: filteredChalans.length,
+      paid: filteredChalans.filter(c => c.status === 'paid').length,
+      pending: filteredChalans.filter(c => (c.status || 'pending') === 'pending').length,
+      overdue: filteredChalans.filter(c => c.status === 'overdue').length,
+      totalAmount: filteredChalans.reduce((sum, c) => sum + (Number(c.fees?.totalAmount) || 0), 0),
+      paidAmount: filteredChalans.filter(c => c.status === 'paid').reduce((sum, c) => sum + (Number(c.fees?.totalAmount) || 0), 0),
+      unpaidAmount: filteredChalans.filter(c => c.status !== 'paid').reduce((sum, c) => sum + (Number(c.fees?.totalAmount) || 0), 0)
+    };
+
     return {
       transactions: filteredTransactions,
       invoices: filteredInvoices,
+      chalans: filteredChalans,
       income: reportIncome,
       expense: reportExpense,
       netProfit,
       categoryBreakdown,
-      invoiceStats
+      invoiceStats,
+      chalanStats
     };
-  }, [transactions, invoices, reportDateRange]);
+  }, [transactions, invoices, chalans, reportDateRange]);
 
   const exportToCSV = (type) => {
     let csvContent = '';
@@ -182,6 +205,13 @@ const AccountsDashboard = () => {
         csvContent += `${studentName},${inv.amount || 0},${inv.dueDate || ''},${inv.status || 'unpaid'},${paidDate}\n`;
       });
       filename = `invoices_report_${new Date().toISOString().split('T')[0]}.csv`;
+    } else if (type === 'chalans') {
+      csvContent = 'Student,Chalan #,Class,Total Amount,Due Date,Status,Paid Date\n';
+      reportData.chalans.forEach(c => {
+        const paidDate = c.paidAt?.toDate ? c.paidAt.toDate().toISOString().split('T')[0] : '';
+        csvContent += `${c.studentName || ''},${c.chalanNumber || ''},${c.className || ''},${c.fees?.totalAmount || 0},${c.dueDate || ''},${c.status || 'pending'},${paidDate}\n`;
+      });
+      filename = `fee_chalans_report_${new Date().toISOString().split('T')[0]}.csv`;
     } else {
       // Financial summary
       csvContent = 'Report Type,Amount\n';
@@ -195,6 +225,14 @@ const AccountsDashboard = () => {
       csvContent += `Total Invoice Amount,${reportData.invoiceStats.totalAmount}\n`;
       csvContent += `Paid Amount,${reportData.invoiceStats.paidAmount}\n`;
       csvContent += `Unpaid Amount,${reportData.invoiceStats.unpaidAmount}\n`;
+      csvContent += `\nFee Chalan Statistics\n`;
+      csvContent += `Total Chalans,${reportData.chalanStats.total}\n`;
+      csvContent += `Paid Chalans,${reportData.chalanStats.paid}\n`;
+      csvContent += `Pending Chalans,${reportData.chalanStats.pending}\n`;
+      csvContent += `Overdue Chalans,${reportData.chalanStats.overdue}\n`;
+      csvContent += `Total Chalan Amount,${reportData.chalanStats.totalAmount}\n`;
+      csvContent += `Paid Amount,${reportData.chalanStats.paidAmount}\n`;
+      csvContent += `Unpaid Amount,${reportData.chalanStats.unpaidAmount}\n`;
       filename = `financial_summary_${new Date().toISOString().split('T')[0]}.csv`;
     }
 
@@ -542,6 +580,36 @@ const AccountsDashboard = () => {
               </Col>
             </Row>
 
+          <Row className="mb-3">
+            <Col md={12}>
+              <Card className="card-enhanced">
+                <Card.Header style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', color: 'white' }}>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <strong>Fee Chalan Statistics</strong>
+                    <Button size="sm" variant="outline-light" onClick={() => exportToCSV('chalans')}>
+                      <i className="fas fa-file-csv me-2"></i>Export Fee Chalans
+                    </Button>
+                  </div>
+                </Card.Header>
+                <Card.Body>
+                  {reportData.chalans.length === 0 ? (
+                    <p className="text-muted mb-0">No fee chalans in selected period</p>
+                  ) : (
+                    <Row>
+                      <Col md={3}><div><small className="text-muted">Total Chalans</small><h5>{reportData.chalanStats.total}</h5></div></Col>
+                      <Col md={3}><div><small className="text-muted">Paid</small><h5 className="text-success">{reportData.chalanStats.paid}</h5></div></Col>
+                      <Col md={3}><div><small className="text-muted">Pending</small><h5 className="text-warning">{reportData.chalanStats.pending}</h5></div></Col>
+                      <Col md={3}><div><small className="text-muted">Overdue</small><h5 className="text-danger">{reportData.chalanStats.overdue}</h5></div></Col>
+                      <Col md={4} className="mt-3"><div><small className="text-muted">Total Amount</small><h5>PKR {reportData.chalanStats.totalAmount.toLocaleString()}</h5></div></Col>
+                      <Col md={4} className="mt-3"><div><small className="text-muted">Paid Amount</small><h5 className="text-success">PKR {reportData.chalanStats.paidAmount.toLocaleString()}</h5></div></Col>
+                      <Col md={4} className="mt-3"><div><small className="text-muted">Outstanding</small><h5 className="text-warning">PKR {reportData.chalanStats.unpaidAmount.toLocaleString()}</h5></div></Col>
+                    </Row>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
+
             <Row className="mb-3">
               <Col md={6}>
                 <Card className="card-enhanced">
@@ -681,6 +749,44 @@ const AccountsDashboard = () => {
                               <td>{t.category || 'N/A'}</td>
                               <td>PKR {(Number(t.amount) || 0).toLocaleString()}</td>
                               <td>{t.description || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={12}>
+                <Card className="card-enhanced">
+                  <Card.Header style={gradientHeader}><strong>Fee Chalans Detail</strong></Card.Header>
+                  <Card.Body>
+                    {reportData.chalans.length === 0 ? (
+                      <p className="text-muted mb-0">No fee chalans found in the selected period</p>
+                    ) : (
+                      <Table responsive striped bordered hover size="sm" className="table-enhanced">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Student</th>
+                            <th>Class</th>
+                            <th>Chalan #</th>
+                            <th>Total Amount</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportData.chalans.map(c => (
+                            <tr key={c.id}>
+                              <td>{c.dueDate || (c.createdAt?.toDate ? c.createdAt.toDate().toISOString().split('T')[0] : 'N/A')}</td>
+                              <td>{c.studentName || 'N/A'}</td>
+                              <td>{c.className || 'N/A'}</td>
+                              <td>{c.chalanNumber || '-'}</td>
+                              <td>PKR {(Number(c.fees?.totalAmount)||0).toLocaleString()}</td>
+                              <td><Badge bg={c.status === 'paid' ? 'success' : (c.status === 'overdue' ? 'danger' : 'warning')}>{c.status || 'pending'}</Badge></td>
                             </tr>
                           ))}
                         </tbody>
