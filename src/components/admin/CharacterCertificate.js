@@ -24,6 +24,7 @@ const CharacterCertificate = () => {
     schoolName: 'School Portal',
     characterDescription: ''
   });
+  const [schoolLogo, setSchoolLogo] = useState('');
 
   useEffect(() => {
     fetchSchoolProfile();
@@ -43,6 +44,9 @@ const CharacterCertificate = () => {
         }
         if (data.principalName) {
           setCertificateData(prev => ({ ...prev, principalName: data.principalName }));
+        }
+        if (data.logo) {
+          setSchoolLogo(data.logo);
         }
       }
     } catch (error) {
@@ -366,6 +370,7 @@ const CharacterCertificate = () => {
           </div>
           
           <div class="certificate-header">
+            ${schoolLogo ? `<img src="${schoolLogo}" style="height:80px;margin-bottom:10px;object-fit:contain;" />` : ''}
             <div class="school-name">${certificateData.schoolName}</div>
             <div class="certificate-title">CHARACTER CERTIFICATE</div>
           </div>
@@ -646,6 +651,7 @@ const CharacterCertificate = () => {
           </div>
           
           <div class="certificate-header">
+            ${schoolLogo ? `<img src="${schoolLogo}" style="height:80px;margin-bottom:10px;object-fit:contain;" />` : ''}
             <div class="school-name">${certificateData.schoolName}</div>
             <div class="certificate-title">CHARACTER CERTIFICATE</div>
           </div>
@@ -753,6 +759,7 @@ const CharacterCertificate = () => {
         <div class="certificate-container">
           <div class="seal">SCHOOL<br>SEAL</div>
           <div class="certificate-header">
+            ${schoolLogo ? `<img src="${schoolLogo}" style="height:80px;margin-bottom:10px;object-fit:contain;" />` : ''}
             <div class="school-name">${data.schoolName || 'School Portal'}</div>
             <div class="certificate-title">CHARACTER CERTIFICATE</div>
           </div>
