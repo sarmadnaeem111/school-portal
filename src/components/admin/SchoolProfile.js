@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Form, Button, Alert, Tab, Tabs, Image } from 'react-bootstrap';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../../contexts/AuthContext';
 import { db, storage } from '../../firebase/config';
@@ -95,6 +95,17 @@ const SchoolProfile = () => {
 
   useEffect(() => {
     fetchSchoolProfile();
+    // Live updates to ensure images/fields appear immediately after save or refresh
+    const profileRef = doc(db, 'schoolProfile', 'main');
+    const unsubscribe = onSnapshot(profileRef, (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setProfileData(prev => ({ ...prev, ...data }));
+      }
+    }, (err) => {
+      console.error('Error listening to school profile:', err);
+    });
+    return () => unsubscribe();
   }, []);
 
   const fetchSchoolProfile = async () => {
@@ -147,12 +158,46 @@ const SchoolProfile = () => {
     try {
       if (!file) return;
       
-      const imageRef = ref(storage, `schoolProfile/${field}/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(imageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      // Prefer Cloudinary if configured via env
+      const cloudName = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+
+      let imageUrl = '';
+
+      if (cloudName && uploadPreset) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', uploadPreset);
+        // Optional: organize by folder
+        formData.append('folder', `schoolProfile/${field}`);
+
+        const cloudinaryEndpoint = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+        const response = await fetch(cloudinaryEndpoint, { method: 'POST', body: formData });
+        if (!response.ok) {
+          const txt = await response.text();
+          throw new Error(`Cloudinary upload failed: ${txt}`);
+        }
+        const data = await response.json();
+        imageUrl = data.secure_url || data.url;
+      } else {
+        // Fallback to Firebase Storage if Cloudinary is not configured
+        const imageRef = ref(storage, `schoolProfile/${field}/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(imageRef, file);
+        imageUrl = await getDownloadURL(snapshot.ref);
+      }
       
-      handleInputChange(field, downloadURL);
-      setMessage('Image uploaded successfully');
+      // Update local state for immediate preview
+      handleInputChange(field, imageUrl);
+
+      // Persist immediately so image is saved even if user doesn't click Save Profile
+      try {
+        const profileRef = doc(db, 'schoolProfile', 'main');
+        await setDoc(profileRef, { [field]: imageUrl }, { merge: true });
+      } catch (persistError) {
+        console.error('Error saving image URL to profile:', persistError);
+      }
+
+      setMessage('Image uploaded and saved successfully');
       setMessageType('success');
     } catch (error) {
       console.error('Error uploading image:', error);
