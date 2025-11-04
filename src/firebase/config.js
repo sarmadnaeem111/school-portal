@@ -48,7 +48,8 @@ const FALLBACK_CONFIG = {
   apiKey: "AIzaSyAVTq89H0x_KzlgxiobbCGUhdnqICsBi48",
   authDomain: "customer-abe40.firebaseapp.com",
   projectId: "customer-abe40",
-  storageBucket: "customer-abe40.firebasestorage.app",
+  // IMPORTANT: Storage bucket must be the bucket name, not the web domain
+  storageBucket: "customer-abe40.appspot.com",
   messagingSenderId: "566208631479",
   appId: "1:566208631479:web:540f9812eceb08690cb332",
   measurementId: "G-BKJVVKWWV2"
