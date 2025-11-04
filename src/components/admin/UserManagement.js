@@ -316,6 +316,14 @@ const UserManagement = () => {
             role="hostel"
           />
         </Tab>
+        <Tab eventKey="cafeteria" title={`Cafeteria (${getUsersByRole('cafeteria').length})`}>
+          <UserTable 
+            users={getUsersByRole('cafeteria')} 
+            onEdit={handleEdit} 
+            onDelete={handleDelete}
+            role="cafeteria"
+          />
+        </Tab>
       </Tabs>
 
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
