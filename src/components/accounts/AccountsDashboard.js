@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Tabs, Tab, Card, Row, Col, Form, Button, Table, Alert, Badge } from 'react-bootstrap';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Tabs, Tab, Card, Row, Col, Form, Button, Table, Alert, Badge, ProgressBar } from 'react-bootstrap';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,6 +27,7 @@ const AccountsDashboard = () => {
 
   const [txnForm, setTxnForm] = useState({ type: 'income', category: 'fee', amount: '', date: '', description: '' });
   const [invoiceForm, setInvoiceForm] = useState({ studentId: '', amount: '', dueDate: '', status: 'unpaid' });
+  const [reportDateRange, setReportDateRange] = useState({ start: '', end: '' });
 
   useEffect(() => {
     loadAll();
@@ -111,6 +112,99 @@ const AccountsDashboard = () => {
   const totals = transactions.reduce((acc, t) => {
     if ((t.type || 'income') === 'income') acc.income += Number(t.amount) || 0; else acc.expense += Number(t.amount) || 0; return acc;
   }, { income: 0, expense: 0 });
+
+  // Report calculations
+  const reportData = useMemo(() => {
+    const filteredTransactions = transactions.filter(t => {
+      if (!reportDateRange.start && !reportDateRange.end) return true;
+      const txnDate = t.date || (t.createdAt?.toDate ? t.createdAt.toDate().toISOString().split('T')[0] : '');
+      if (reportDateRange.start && txnDate < reportDateRange.start) return false;
+      if (reportDateRange.end && txnDate > reportDateRange.end) return false;
+      return true;
+    });
+
+    const filteredInvoices = invoices.filter(inv => {
+      if (!reportDateRange.start && !reportDateRange.end) return true;
+      const invDate = inv.dueDate || (inv.createdAt?.toDate ? inv.createdAt.toDate().toISOString().split('T')[0] : '');
+      if (reportDateRange.start && invDate < reportDateRange.start) return false;
+      if (reportDateRange.end && invDate > reportDateRange.end) return false;
+      return true;
+    });
+
+    const reportIncome = filteredTransactions.reduce((sum, t) => sum + ((t.type === 'income' ? Number(t.amount) : 0) || 0), 0);
+    const reportExpense = filteredTransactions.reduce((sum, t) => sum + ((t.type === 'expense' ? Number(t.amount) : 0) || 0), 0);
+    const netProfit = reportIncome - reportExpense;
+
+    const categoryBreakdown = {};
+    filteredTransactions.forEach(t => {
+      const cat = t.category || 'uncategorized';
+      if (!categoryBreakdown[cat]) categoryBreakdown[cat] = { income: 0, expense: 0 };
+      if (t.type === 'income') categoryBreakdown[cat].income += Number(t.amount) || 0;
+      else categoryBreakdown[cat].expense += Number(t.amount) || 0;
+    });
+
+    const invoiceStats = {
+      total: filteredInvoices.length,
+      paid: filteredInvoices.filter(i => i.status === 'paid').length,
+      unpaid: filteredInvoices.filter(i => i.status !== 'paid').length,
+      totalAmount: filteredInvoices.reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
+      paidAmount: filteredInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0),
+      unpaidAmount: filteredInvoices.filter(i => i.status !== 'paid').reduce((sum, i) => sum + (Number(i.amount) || 0), 0)
+    };
+
+    return {
+      transactions: filteredTransactions,
+      invoices: filteredInvoices,
+      income: reportIncome,
+      expense: reportExpense,
+      netProfit,
+      categoryBreakdown,
+      invoiceStats
+    };
+  }, [transactions, invoices, reportDateRange]);
+
+  const exportToCSV = (type) => {
+    let csvContent = '';
+    let filename = '';
+
+    if (type === 'transactions') {
+      csvContent = 'Type,Category,Amount,Date,Description\n';
+      reportData.transactions.forEach(t => {
+        csvContent += `${t.type || 'income'},${t.category || ''},${t.amount || 0},${t.date || ''},"${(t.description || '').replace(/"/g, '""')}"\n`;
+      });
+      filename = `transactions_report_${new Date().toISOString().split('T')[0]}.csv`;
+    } else if (type === 'invoices') {
+      csvContent = 'Student,Amount,Due Date,Status,Paid Date\n';
+      reportData.invoices.forEach(inv => {
+        const studentName = getStudentName(inv.studentId);
+        const paidDate = inv.paidAt?.toDate ? inv.paidAt.toDate().toISOString().split('T')[0] : '';
+        csvContent += `${studentName},${inv.amount || 0},${inv.dueDate || ''},${inv.status || 'unpaid'},${paidDate}\n`;
+      });
+      filename = `invoices_report_${new Date().toISOString().split('T')[0]}.csv`;
+    } else {
+      // Financial summary
+      csvContent = 'Report Type,Amount\n';
+      csvContent += `Total Income,${reportData.income}\n`;
+      csvContent += `Total Expense,${reportData.expense}\n`;
+      csvContent += `Net Profit,${reportData.netProfit}\n`;
+      csvContent += `\nInvoice Statistics\n`;
+      csvContent += `Total Invoices,${reportData.invoiceStats.total}\n`;
+      csvContent += `Paid Invoices,${reportData.invoiceStats.paid}\n`;
+      csvContent += `Unpaid Invoices,${reportData.invoiceStats.unpaid}\n`;
+      csvContent += `Total Invoice Amount,${reportData.invoiceStats.totalAmount}\n`;
+      csvContent += `Paid Amount,${reportData.invoiceStats.paidAmount}\n`;
+      csvContent += `Unpaid Amount,${reportData.invoiceStats.unpaidAmount}\n`;
+      filename = `financial_summary_${new Date().toISOString().split('T')[0]}.csv`;
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    setMessage('Report exported successfully');
+    setMessageType('success');
+  };
 
   const isAdminView = userRole === 'admin';
 
@@ -347,12 +441,250 @@ const AccountsDashboard = () => {
           </Tab>
 
           <Tab eventKey="reports" title="Reports">
-            <Card className="card-enhanced">
-              <Card.Header style={gradientHeader}><strong>Reports</strong></Card.Header>
-              <Card.Body>
-                <p className="text-muted mb-0">Summary and export features (coming soon).</p>
-              </Card.Body>
-            </Card>
+            <Row className="mb-3">
+              <Col md={12}>
+                <Card className="card-enhanced">
+                  <Card.Header style={gradientHeader}><strong>Date Range Filter</strong></Card.Header>
+                  <Card.Body>
+                    <Row>
+                      <Col md={4}>
+                        <Form.Group>
+                          <Form.Label>Start Date</Form.Label>
+                          <Form.Control
+                            type="date"
+                            value={reportDateRange.start}
+                            onChange={(e) => setReportDateRange({ ...reportDateRange, start: e.target.value })}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={4}>
+                        <Form.Group>
+                          <Form.Label>End Date</Form.Label>
+                          <Form.Control
+                            type="date"
+                            value={reportDateRange.end}
+                            onChange={(e) => setReportDateRange({ ...reportDateRange, end: e.target.value })}
+                          />
+                        </Form.Group>
+                      </Col>
+                      <Col md={4} className="d-flex align-items-end">
+                        <Button
+                          variant="outline-secondary"
+                          onClick={() => setReportDateRange({ start: '', end: '' })}
+                          className="w-100"
+                        >
+                          <i className="fas fa-times me-2"></i>Clear Filter
+                        </Button>
+                      </Col>
+                    </Row>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <Row className="mb-3">
+              <Col md={3}>
+                <Card className="card-enhanced">
+                  <Card.Header style={{ background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', color: 'white' }}>
+                    <strong>Total Income</strong>
+                  </Card.Header>
+                  <Card.Body>
+                    <h4 className="mb-0">PKR {reportData.income.toLocaleString()}</h4>
+                    <small className="text-muted">Period income</small>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="card-enhanced">
+                  <Card.Header style={{ background: 'linear-gradient(135deg, #ee0979 0%, #ff6a00 100%)', color: 'white' }}>
+                    <strong>Total Expense</strong>
+                  </Card.Header>
+                  <Card.Body>
+                    <h4 className="mb-0">PKR {reportData.expense.toLocaleString()}</h4>
+                    <small className="text-muted">Period expense</small>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="card-enhanced">
+                  <Card.Header style={{ background: reportData.netProfit >= 0 ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', color: 'white' }}>
+                    <strong>Net Profit</strong>
+                  </Card.Header>
+                  <Card.Body>
+                    <h4 className="mb-0">PKR {reportData.netProfit.toLocaleString()}</h4>
+                    <small className="text-muted">Income - Expense</small>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={3}>
+                <Card className="card-enhanced">
+                  <Card.Header style={gradientHeader}>
+                    <strong>Profit Margin</strong>
+                  </Card.Header>
+                  <Card.Body>
+                    <h4 className="mb-0">
+                      {reportData.income > 0 
+                        ? `${((reportData.netProfit / reportData.income) * 100).toFixed(1)}%`
+                        : '0%'}
+                    </h4>
+                    <ProgressBar
+                      variant={reportData.netProfit >= 0 ? 'success' : 'danger'}
+                      now={reportData.income > 0 ? Math.abs((reportData.netProfit / reportData.income) * 100) : 0}
+                      className="mt-2"
+                    />
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <Row className="mb-3">
+              <Col md={6}>
+                <Card className="card-enhanced">
+                  <Card.Header style={gradientHeader}><strong>Invoice Statistics</strong></Card.Header>
+                  <Card.Body>
+                    <Row>
+                      <Col md={6}>
+                        <div className="mb-3">
+                          <small className="text-muted">Total Invoices</small>
+                          <h5>{reportData.invoiceStats.total}</h5>
+                        </div>
+                        <div className="mb-3">
+                          <small className="text-muted">Paid</small>
+                          <h5 className="text-success">{reportData.invoiceStats.paid}</h5>
+                        </div>
+                        <div className="mb-3">
+                          <small className="text-muted">Unpaid</small>
+                          <h5 className="text-warning">{reportData.invoiceStats.unpaid}</h5>
+                        </div>
+                      </Col>
+                      <Col md={6}>
+                        <div className="mb-3">
+                          <small className="text-muted">Total Amount</small>
+                          <h5>PKR {reportData.invoiceStats.totalAmount.toLocaleString()}</h5>
+                        </div>
+                        <div className="mb-3">
+                          <small className="text-muted">Paid Amount</small>
+                          <h5 className="text-success">PKR {reportData.invoiceStats.paidAmount.toLocaleString()}</h5>
+                        </div>
+                        <div className="mb-3">
+                          <small className="text-muted">Outstanding</small>
+                          <h5 className="text-warning">PKR {reportData.invoiceStats.unpaidAmount.toLocaleString()}</h5>
+                        </div>
+                      </Col>
+                    </Row>
+                    {reportData.invoiceStats.total > 0 && (
+                      <div className="mt-3">
+                        <small className="text-muted">Payment Rate</small>
+                        <ProgressBar
+                          variant="success"
+                          now={(reportData.invoiceStats.paid / reportData.invoiceStats.total) * 100}
+                          className="mt-1"
+                          label={`${((reportData.invoiceStats.paid / reportData.invoiceStats.total) * 100).toFixed(1)}%`}
+                        />
+                      </div>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={6}>
+                <Card className="card-enhanced">
+                  <Card.Header style={gradientHeader}><strong>Category Breakdown</strong></Card.Header>
+                  <Card.Body>
+                    {Object.keys(reportData.categoryBreakdown).length === 0 ? (
+                      <p className="text-muted mb-0">No transactions in selected period</p>
+                    ) : (
+                      <Table striped bordered hover size="sm">
+                        <thead>
+                          <tr>
+                            <th>Category</th>
+                            <th>Income</th>
+                            <th>Expense</th>
+                            <th>Net</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(reportData.categoryBreakdown).map(([cat, data]) => (
+                            <tr key={cat}>
+                              <td><strong>{cat}</strong></td>
+                              <td className="text-success">PKR {data.income.toLocaleString()}</td>
+                              <td className="text-danger">PKR {data.expense.toLocaleString()}</td>
+                              <td className={data.income - data.expense >= 0 ? 'text-success' : 'text-danger'}>
+                                PKR {(data.income - data.expense).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <Row className="mb-3">
+              <Col md={12}>
+                <Card className="card-enhanced">
+                  <Card.Header style={gradientHeader}>
+                    <div className="d-flex justify-content-between align-items-center">
+                      <strong>Export Reports</strong>
+                      <div className="d-flex gap-2">
+                        <Button size="sm" variant="outline-light" onClick={() => exportToCSV('summary')}>
+                          <i className="fas fa-file-csv me-2"></i>Financial Summary
+                        </Button>
+                        <Button size="sm" variant="outline-light" onClick={() => exportToCSV('transactions')}>
+                          <i className="fas fa-file-csv me-2"></i>Transactions
+                        </Button>
+                        <Button size="sm" variant="outline-light" onClick={() => exportToCSV('invoices')}>
+                          <i className="fas fa-file-csv me-2"></i>Invoices
+                        </Button>
+                      </div>
+                    </div>
+                  </Card.Header>
+                  <Card.Body>
+                    <p className="text-muted mb-0">
+                      <i className="fas fa-info-circle me-2"></i>
+                      Export reports as CSV files. Select a date range above to filter the data before exporting.
+                    </p>
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+
+            <Row>
+              <Col md={12}>
+                <Card className="card-enhanced">
+                  <Card.Header style={gradientHeader}><strong>Detailed Transaction Report</strong></Card.Header>
+                  <Card.Body>
+                    {reportData.transactions.length === 0 ? (
+                      <p className="text-muted mb-0">No transactions found in the selected period</p>
+                    ) : (
+                      <Table responsive striped bordered hover size="sm" className="table-enhanced">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th>Description</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reportData.transactions.map(t => (
+                            <tr key={t.id}>
+                              <td>{t.date || 'N/A'}</td>
+                              <td><Badge bg={t.type === 'income' ? 'success' : 'danger'}>{t.type || 'income'}</Badge></td>
+                              <td>{t.category || 'N/A'}</td>
+                              <td>PKR {(Number(t.amount) || 0).toLocaleString()}</td>
+                              <td>{t.description || '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </Table>
+                    )}
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
           </Tab>
         </Tabs>
       </div>
