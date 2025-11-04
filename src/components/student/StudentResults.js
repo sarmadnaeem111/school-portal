@@ -13,7 +13,9 @@ const StudentResults = () => {
   const [schoolProfile, setSchoolProfile] = useState({});
 
   useEffect(() => {
-    fetchStudentResults();
+    if (currentUser) {
+      fetchStudentResults();
+    }
   }, [currentUser]);
 
   const fetchStudentResults = async () => {
@@ -29,9 +31,55 @@ const StudentResults = () => {
         return;
       }
 
-      console.log('Current user data:', currentUser);
+      // Fetch student document from Firestore to get classId and other student data
+      let studentData = null;
+      let studentDocId = currentUser.uid;
+      
+      try {
+        // Try to get by document ID (since users are stored with uid as doc ID)
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        
+        if (userDocSnap.exists()) {
+          studentData = { id: userDocSnap.id, ...userDocSnap.data() };
+          studentDocId = userDocSnap.id;
+        } else {
+          // Fallback: try query by uid field
+          const studentQuery = query(collection(db, 'users'), where('uid', '==', currentUser.uid));
+          const studentSnapshot = await getDocs(studentQuery);
+          if (!studentSnapshot.empty) {
+            const studentDoc = studentSnapshot.docs[0];
+            studentData = { id: studentDoc.id, ...studentDoc.data() };
+            studentDocId = studentDoc.id;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching student document:', error);
+        // Fallback: try query by uid field
+        try {
+          const studentQuery = query(collection(db, 'users'), where('uid', '==', currentUser.uid));
+          const studentSnapshot = await getDocs(studentQuery);
+          if (!studentSnapshot.empty) {
+            const studentDoc = studentSnapshot.docs[0];
+            studentData = { id: studentDoc.id, ...studentDoc.data() };
+            studentDocId = studentDoc.id;
+          }
+        } catch (fallbackError) {
+          console.error('Error in fallback query:', fallbackError);
+        }
+      }
 
-      if (!currentUser.classId) {
+      if (!studentData) {
+        setMessage('Student information not found. Please contact the school administration.');
+        setMessageType('warning');
+        setStudentResults([]);
+        setLoading(false);
+        return;
+      }
+
+      console.log('Student data:', studentData);
+
+      if (!studentData.classId) {
         setMessage('Student class information not found. Please contact the school administration.');
         setMessageType('warning');
         setStudentResults([]);
@@ -39,20 +87,30 @@ const StudentResults = () => {
         return;
       }
       
-      // Get student's grades
+      // Get student's grades - try both document ID and uid
       const gradesQuery = query(
         collection(db, 'grades'),
-        where('studentId', '==', currentUser.uid)
+        where('studentId', '==', studentDocId)
       );
       const gradesSnapshot = await getDocs(gradesQuery);
-      const grades = gradesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let grades = gradesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // If no grades found with document ID, try with uid as fallback
+      if (grades.length === 0 && studentDocId !== currentUser.uid) {
+        const gradesQueryByUid = query(
+          collection(db, 'grades'),
+          where('studentId', '==', currentUser.uid)
+        );
+        const gradesSnapshotByUid = await getDocs(gradesQueryByUid);
+        grades = gradesSnapshotByUid.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      }
       
       console.log('Found grades:', grades);
 
       // Get subjects for the student's class
       const subjectsQuery = query(
         collection(db, 'subjects'),
-        where('classId', '==', currentUser.classId)
+        where('classId', '==', studentData.classId)
       );
       const subjectsSnapshot = await getDocs(subjectsQuery);
       const subjects = subjectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -99,10 +157,10 @@ const StudentResults = () => {
       const overallGrade = calculateGrade(overallPercentage);
 
       const studentResult = {
-        studentId: currentUser.uid,
-        studentName: currentUser.displayName || currentUser.name || 'Unknown Student',
-        rollNumber: currentUser.rollNumber || 'N/A',
-        classId: currentUser.classId,
+        studentId: studentDocId,
+        studentName: studentData.name || currentUser.displayName || 'Unknown Student',
+        rollNumber: studentData.rollNumber || 'N/A',
+        classId: studentData.classId,
         subjectResults: subjectResults,
         overallTotal: overallTotal,
         overallObtained: overallObtained,
@@ -507,7 +565,7 @@ const StudentResults = () => {
             <small>
               <strong>Current User:</strong> {currentUser ? 'Authenticated' : 'Not authenticated'}<br/>
               <strong>User ID:</strong> {currentUser?.uid || 'N/A'}<br/>
-              <strong>Class ID:</strong> {currentUser?.classId || 'N/A'}<br/>
+              <strong>Class ID:</strong> {studentResults.length > 0 ? studentResults[0]?.classId || 'N/A' : 'N/A'}<br/>
               <strong>Results Count:</strong> {studentResults.length}<br/>
               <strong>Loading:</strong> {loading ? 'Yes' : 'No'}
             </small>
