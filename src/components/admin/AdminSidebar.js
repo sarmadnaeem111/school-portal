@@ -162,6 +162,12 @@ const AdminSidebar = ({ onClose, handleLogout }) => {
             Library
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/admin/cafeteria" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-coffee me-2"></i>
+            Cafeteria
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/admin/accounts" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-calculator me-2"></i>
