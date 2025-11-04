@@ -11,6 +11,7 @@ const TeacherTimetable = () => {
   const [classes, setClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState('');
   const [timetable, setTimetable] = useState(null);
+  const [teachersMap, setTeachersMap] = useState({});
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -18,6 +19,20 @@ const TeacherTimetable = () => {
       setLoading(true);
       setError('');
       try {
+        // Preload teachers map so we can display names if not embedded
+        const teachersPromise = (async () => {
+          try {
+            const snap = await getDocs(collection(db, 'users'));
+            const map = {};
+            snap.docs.forEach(d => {
+              const data = d.data();
+              if (data.role === 'teacher') map[d.id] = data.name || '';
+            });
+            setTeachersMap(map);
+          } catch (_) {
+            setTeachersMap({});
+          }
+        })();
         // classes where teacher is class teacher
         const classQ = query(collection(db, 'classes'), where('teacherId', '==', currentUser.uid));
         // subjects where teacher teaches -> gather classIds
@@ -37,6 +52,7 @@ const TeacherTimetable = () => {
         }
         setClasses(classList);
         if (classList.length > 0) setSelectedClassId(classList[0].id);
+        await teachersPromise;
       } catch (e) {
         console.error(e);
         setError('Failed to load classes.');
@@ -109,8 +125,13 @@ const TeacherTimetable = () => {
                   <td><strong>{day}</strong></td>
                   {(timetable.slots || []).map(s => {
                     const cell = timetable.schedule?.[day]?.[s.id];
+                    if (!cell) return (<td key={`${day}-${s.id}`}>—</td>);
+                    const tName = cell.teacherName || (cell.teacherId ? (teachersMap[cell.teacherId] || '') : '');
                     return (
-                      <td key={`${day}-${s.id}`}>{cell ? (cell.subjectName || '—') : '—'}</td>
+                      <td key={`${day}-${s.id}`}>
+                        <div>{cell.subjectName || '—'}</div>
+                        {tName ? <div className="text-muted" style={{ fontSize: '0.9rem' }}>{tName}</div> : null}
+                      </td>
                     );
                   })}
                 </tr>
