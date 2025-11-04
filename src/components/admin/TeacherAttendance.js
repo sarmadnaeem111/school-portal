@@ -130,7 +130,8 @@ const TeacherAttendance = () => {
 
   const openStatusModal = (teacherId, currentStatus) => {
     setEditingTeacher({ id: teacherId, action: 'status' });
-    setSelectedStatus(currentStatus);
+    // Default to 'present' when no existing status
+    setSelectedStatus(currentStatus || 'present');
     setShowStatusModal(true);
   };
 
@@ -343,7 +344,7 @@ const TeacherAttendance = () => {
 
   const getTeacherAttendanceStatus = (teacherId) => {
     const record = teacherAttendance.find(record => record.teacherId === teacherId);
-    if (!record) return { status: 'absent', arrivalTime: null, departureTime: null };
+    if (!record) return { status: 'present', arrivalTime: null, departureTime: null };
     return {
       status: record.status,
       arrivalTime: record.arrivalTime,
