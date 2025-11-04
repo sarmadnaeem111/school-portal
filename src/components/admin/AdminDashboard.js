@@ -22,6 +22,7 @@ import TransportDashboard from '../transport/TransportDashboard';
 import LibraryDashboard from '../library/LibraryDashboard';
 import AccountsDashboard from '../accounts/AccountsDashboard';
 import HostelDashboard from '../hostel/HostelDashboard';
+import CafeteriaDashboard from '../cafeteria/CafeteriaDashboard';
 
 const AdminDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -129,6 +130,7 @@ const AdminDashboard = () => {
             <Route path="/school-profile" element={<SchoolProfile />} />
             <Route path="/fee-chalan" element={<FeeChalan />} />
             <Route path="/library" element={<LibraryDashboard />} />
+            <Route path="/cafeteria" element={<CafeteriaDashboard />} />
             <Route path="/accounts" element={<AccountsDashboard />} />
             <Route path="/hostel" element={<HostelDashboard />} />
             <Route path="/transport" element={<TransportDashboard />} />
