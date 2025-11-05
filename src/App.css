@@ -403,6 +403,10 @@ body {
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     width: 280px !important;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 24px; /* allow last items to be accessible above close button */
   }
   
   .sidebar-enhanced.show {
