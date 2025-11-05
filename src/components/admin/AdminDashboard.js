@@ -23,6 +23,7 @@ import LibraryDashboard from '../library/LibraryDashboard';
 import AccountsDashboard from '../accounts/AccountsDashboard';
 import HostelDashboard from '../hostel/HostelDashboard';
 import CafeteriaDashboard from '../cafeteria/CafeteriaDashboard';
+import TeacherQRCards from './TeacherQRCards';
 
 const AdminDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -121,6 +122,7 @@ const AdminDashboard = () => {
             <Route path="/classes" element={<ClassManagement />} />
             <Route path="/attendance" element={<AttendanceReports />} />
             <Route path="/teacher-attendance" element={<TeacherAttendance />} />
+            <Route path="/teacher-qr-cards" element={<TeacherQRCards />} />
             <Route path="/announcements" element={<Announcements />} />
             <Route path="/whatsapp" element={<AdminWhatsApp />} />
             <Route path="/timetable" element={<AdminTimetable />} />
