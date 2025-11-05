@@ -369,9 +369,9 @@ const SchoolProfile = () => {
                     >
                       <option value="">Select medium</option>
                       <option value="English">English</option>
-                      <option value="Hindi">Hindi</option>
-                      <option value="Regional">Regional</option>
-                      <option value="Bilingual">Bilingual</option>
+                      <option value="Urdu">Urdu</option>
+                      {/* <option value="Regional">Regional</option>
+                      <option value="Bilingual">Bilingual</option> */}
                     </Form.Select>
                   </Form.Group>
                 </Col>
