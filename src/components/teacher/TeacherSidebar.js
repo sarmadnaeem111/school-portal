@@ -84,6 +84,12 @@ const TeacherSidebar = ({ onClose, handleLogout }) => {
             Mark Attendance
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/teacher/qr-scan" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-qrcode me-2"></i>
+            Scan My QR
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/teacher/timetable" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-table me-2"></i>
