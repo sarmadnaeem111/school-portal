@@ -120,6 +120,12 @@ const AdminSidebar = ({ onClose, handleLogout }) => {
             Teacher Attendance
           </Nav.Link>
         </LinkContainer>
+        <LinkContainer to="/admin/teacher-qr-cards" onClick={handleCloseSidebar}>
+          <Nav.Link className="text-white">
+            <i className="fas fa-qrcode me-2"></i>
+            Teacher QR Cards
+          </Nav.Link>
+        </LinkContainer>
         <LinkContainer to="/admin/announcements" onClick={handleCloseSidebar}>
           <Nav.Link className="text-white">
             <i className="fas fa-bullhorn me-2"></i>
