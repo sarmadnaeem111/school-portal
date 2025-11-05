@@ -14,6 +14,7 @@ import StudyMaterials from './StudyMaterials';
 import ParentMessages from './ParentMessages';
 import Announcements from './Announcements';
 import TeacherTimetable from './TeacherTimetable';
+import TeacherQRScan from './TeacherQRScan';
 
 const TeacherDashboard = () => {
   const { logout, currentUser } = useAuth();
@@ -115,6 +116,7 @@ const TeacherDashboard = () => {
             <Route path="/messages" element={<ParentMessages />} />
             <Route path="/announcements" element={<Announcements />} />
             <Route path="/timetable" element={<TeacherTimetable />} />
+            <Route path="/qr-scan" element={<TeacherQRScan />} />
             <Route path="/" element={<TeacherOverview />} />
           </Routes>
         </div>
