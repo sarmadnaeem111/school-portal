@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Table, Card, Row, Col, Form, Button, Badge, Alert, Modal } from 'react-bootstrap';
 import { collection, getDocs, query, where, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebase/config';
+import jsQR from 'jsqr';
 
 const TeacherAttendance = () => {
   const { currentUser } = useAuth();
@@ -20,6 +21,17 @@ const TeacherAttendance = () => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [useTimePicker, setUseTimePicker] = useState(true);
   const [timePickerValue, setTimePickerValue] = useState('');
+
+  // QR scanning state
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrAction, setQrAction] = useState('arrival'); // 'arrival' | 'departure'
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const scanIntervalRef = useRef(null);
+  const mediaStreamRef = useRef(null);
+
+  // Fingerprint scan state (SDK placeholder)
+  const [isFingerprintScanning, setIsFingerprintScanning] = useState(false);
 
   // Helper function to convert 24-hour time to 12-hour format
   const formatTo12Hour = (time24) => {
@@ -328,6 +340,199 @@ const TeacherAttendance = () => {
     openTimeModal(teacherId, action);
   };
 
+  // QR: open modal and start scan
+  const openQrScan = async (action) => {
+    setQrAction(action);
+    setShowQrModal(true);
+    // Defer starting the camera slightly to allow modal to render
+    setTimeout(() => {
+      startQrScan();
+    }, 100);
+  };
+
+  const closeQrScan = () => {
+    stopQrScan();
+    setShowQrModal(false);
+  };
+
+  const startQrScan = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setMessage('Camera not supported on this device/browser');
+        setMessageType('warning');
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.setAttribute('playsinline', true);
+        videoRef.current.play();
+      }
+      // Start scanning frames
+      scanIntervalRef.current = setInterval(scanFrame, 250);
+    } catch (err) {
+      console.error('Error starting camera', err);
+      setMessage('Unable to access camera');
+      setMessageType('danger');
+    }
+  };
+
+  const stopQrScan = () => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(t => t.stop());
+      mediaStreamRef.current = null;
+    }
+  };
+
+  const parseQrPayload = (data) => {
+    // Accept either a plain teacherId, an email, or a JSON string with { teacherId } or { email }
+    try {
+      const obj = JSON.parse(data);
+      if (obj.teacherId) return { teacherId: String(obj.teacherId) };
+      if (obj.email) return { email: String(obj.email) };
+    } catch (_) {
+      // Not JSON, fall through
+    }
+    if (data.includes('@')) return { email: data.trim() };
+    return { teacherId: data.trim() };
+  };
+
+  const scanFrame = async () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    if (!width || !height) return;
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, width, height);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    if (code && code.data) {
+      // Found QR
+      stopQrScan();
+      const payload = parseQrPayload(code.data);
+      let teacher = null;
+      if (payload.teacherId) {
+        teacher = teachers.find(t => t.id === payload.teacherId);
+      }
+      if (!teacher && payload.email) {
+        teacher = teachers.find(t => String(t.email).toLowerCase() === String(payload.email).toLowerCase());
+      }
+      if (!teacher) {
+        setMessage('QR does not match any teacher');
+        setMessageType('warning');
+        return;
+      }
+      await markAttendanceInstant(teacher, qrAction);
+      setShowQrModal(false);
+    }
+  };
+
+  const markAttendanceInstant = async (teacher, action) => {
+    try {
+      const currentTime24 = new Date().toLocaleTimeString('en-US', { hour12: false });
+      const today = selectedDate;
+      const existingRecord = teacherAttendance.find(record => 
+        record.teacherId === teacher.id && record.date === today
+      );
+
+      if (action === 'arrival') {
+        if (existingRecord && existingRecord.arrivalTime) {
+          setMessage(`${teacher.name} has already marked arrival today`);
+          setMessageType('warning');
+          return;
+        }
+        if (existingRecord) {
+          await updateDoc(doc(db, 'teacherAttendance', existingRecord.id), {
+            arrivalTime: currentTime24,
+            status: 'present',
+            markedBy: currentUser.uid,
+            markedAt: new Date()
+          });
+        } else {
+          await addDoc(collection(db, 'teacherAttendance'), {
+            teacherId: teacher.id,
+            teacherName: teacher.name,
+            date: today,
+            arrivalTime: currentTime24,
+            status: 'present',
+            markedBy: currentUser.uid,
+            markedAt: new Date()
+          });
+        }
+        setMessage(`${teacher.name} arrival marked via QR`);
+        setMessageType('success');
+      } else if (action === 'departure') {
+        if (!existingRecord || !existingRecord.arrivalTime) {
+          setMessage(`${teacher.name} must mark arrival before departure`);
+          setMessageType('warning');
+          return;
+        }
+        if (existingRecord.departureTime) {
+          setMessage(`${teacher.name} has already marked departure today`);
+          setMessageType('warning');
+          return;
+        }
+        await updateDoc(doc(db, 'teacherAttendance', existingRecord.id), {
+          departureTime: currentTime24,
+          markedBy: currentUser.uid,
+          markedAt: new Date()
+        });
+        setMessage(`${teacher.name} departure marked via QR`);
+        setMessageType('success');
+      }
+      fetchTeacherAttendance();
+    } catch (error) {
+      console.error('Error marking via QR:', error);
+      setMessage('Error marking attendance via QR');
+      setMessageType('danger');
+    }
+  };
+
+  // Fingerprint scan placeholder - integrate with actual SDK as available
+  const openFingerprintScan = async (action) => {
+    setIsFingerprintScanning(true);
+    try {
+      const api = window && window.FingerprintDevice;
+      if (!api || typeof api.scan !== 'function') {
+        setMessage('Fingerprint scanner not detected. Please integrate device SDK at window.FingerprintDevice.scan().');
+        setMessageType('warning');
+        return;
+      }
+      // Expected: { teacherId?: string, email?: string }
+      const result = await api.scan();
+      if (!result) {
+        setMessage('Fingerprint scan failed or was cancelled');
+        setMessageType('warning');
+        return;
+      }
+      const { teacherId, email } = result;
+      let teacher = null;
+      if (teacherId) teacher = teachers.find(t => t.id === teacherId);
+      if (!teacher && email) teacher = teachers.find(t => String(t.email).toLowerCase() === String(email).toLowerCase());
+      if (!teacher) {
+        setMessage('Fingerprint does not match any teacher');
+        setMessageType('warning');
+        return;
+      }
+      await markAttendanceInstant(teacher, action);
+    } catch (err) {
+      console.error('Fingerprint scan error', err);
+      setMessage('Error during fingerprint scan');
+      setMessageType('danger');
+    } finally {
+      setIsFingerprintScanning(false);
+    }
+  };
+
   const getAttendanceStats = () => {
     const totalTeachers = teachers.length;
     const presentTeachers = teacherAttendance.filter(record => record.status === 'present').length;
@@ -375,10 +580,30 @@ const TeacherAttendance = () => {
             />
           </Form.Group>
         </Col>
-        <Col md={4} className="d-flex align-items-end">
+        <Col md={8} className="d-flex align-items-end gap-2 flex-wrap">
           <Button variant="primary" onClick={fetchTeacherAttendance}>
             <i className="fas fa-sync-alt me-2"></i>
             Refresh
+          </Button>
+          <Button variant="dark" onClick={() => openQrScan('arrival')}>
+            <i className="fas fa-qrcode me-2"></i>
+            Scan QR - Arrival
+          </Button>
+          <Button variant="secondary" onClick={() => openQrScan('departure')}>
+            <i className="fas fa-qrcode me-2"></i>
+            Scan QR - Departure
+          </Button>
+          <Button variant="outline-dark" onClick={() => openFingerprintScan('arrival')}>
+            <i className="fas fa-fingerprint me-2"></i>
+            Fingerprint - Arrival
+          </Button>
+          <Button variant="outline-secondary" onClick={() => openFingerprintScan('departure')}>
+            <i className="fas fa-fingerprint me-2"></i>
+            Fingerprint - Departure
+          </Button>
+          <Button variant="outline-primary" onClick={() => window.location.assign('/admin/teacher-qr-cards')}>
+            <i className="fas fa-print me-2"></i>
+            Print Teacher QR Cards
           </Button>
         </Col>
       </Row>
@@ -636,6 +861,35 @@ const TeacherAttendance = () => {
             }
           </Button>
         </Modal.Footer>
+      </Modal>
+
+      {/* QR Scan Modal */}
+      <Modal show={showQrModal} onHide={closeQrScan} size="lg" centered>
+        <Modal.Header closeButton>
+          <Modal.Title>QR Scan - {qrAction === 'arrival' ? 'Arrival' : 'Departure'}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="d-flex justify-content-center">
+            <video ref={videoRef} style={{ width: '100%', maxWidth: 600, borderRadius: 8 }} />
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+          </div>
+          <div className="mt-2 text-muted small">
+            Point the camera at a teacher QR that contains teacher ID or email.
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={closeQrScan}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Fingerprint scanning indicator */}
+      <Modal show={isFingerprintScanning} onHide={() => setIsFingerprintScanning(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Scanning Fingerprint…</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="text-center">Please place finger on the scanner.</div>
+        </Modal.Body>
       </Modal>
 
       {/* Status Edit Modal */}
