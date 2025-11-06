@@ -340,18 +340,19 @@ const MyAttendance = () => {
               </Button>
             </div>
           ) : (
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th>Arrival Time</th>
-                  <th>Departure Time</th>
-                  <th>Working Hours</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendanceRecords.map(record => {
+            <div className="table-responsive">
+              <Table striped bordered hover>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Arrival Time</th>
+                    <th>Departure Time</th>
+                    <th>Working Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendanceRecords.map(record => {
                   let workingHours = 0;
                   if (record.arrivalTime && record.departureTime) {
                     const arrival = new Date(`2000-01-01 ${record.arrivalTime}`);
@@ -375,8 +376,9 @@ const MyAttendance = () => {
                     </tr>
                   );
                 })}
-              </tbody>
-            </Table>
+                </tbody>
+              </Table>
+            </div>
           )}
         </Card.Body>
       </Card>
