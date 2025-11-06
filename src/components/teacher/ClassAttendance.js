@@ -234,7 +234,7 @@ const ClassAttendance = () => {
               <h5>Student Attendance</h5>
             </Card.Header>
             <Card.Body>
-              <Table striped bordered hover>
+              <Table striped bordered hover responsive>
                 <thead>
                   <tr>
                     <th>Roll Number</th>
