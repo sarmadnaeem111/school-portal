@@ -1423,6 +1423,7 @@ const FeeChalan = () => {
                     <h6 className="text-muted">Loading students...</h6>
                   </div>
                 ) : students.length > 0 ? (
+                  <div className="table-responsive">
                   <Table striped bordered hover className="table-enhanced">
                     <thead>
                       <tr>
@@ -1475,6 +1476,7 @@ const FeeChalan = () => {
                       ))}
                     </tbody>
                   </Table>
+                  </div>
                 ) : (
                   <div className="text-center py-4">
                     <i className="fas fa-user-graduate fa-3x text-muted mb-3"></i>
@@ -1501,6 +1503,7 @@ const FeeChalan = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {savedChalans.length > 0 ? (
+                <div className="table-responsive">
                 <Table striped bordered hover className="table-enhanced">
                   <thead>
                     <tr>
@@ -1617,6 +1620,7 @@ const FeeChalan = () => {
                     ))}
                   </tbody>
                 </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-archive fa-3x text-muted mb-3"></i>
@@ -1647,6 +1651,7 @@ const FeeChalan = () => {
               </Alert>
 
               {classes.length > 0 ? (
+                <div className="table-responsive">
                 <Table striped bordered hover className="table-enhanced">
                   <thead>
                     <tr>
@@ -1779,6 +1784,7 @@ const FeeChalan = () => {
                     })}
                   </tbody>
                 </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-chalkboard fa-3x text-muted mb-3"></i>
