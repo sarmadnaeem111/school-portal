@@ -492,59 +492,61 @@ const StudentFeeChalan = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {feeChalans.length > 0 ? (
-                <Table striped bordered hover className="table-enhanced">
-                  <thead>
-                    <tr>
-                      <th>Chalan Number</th>
-                      <th>Academic Year</th>
-                      <th>Total Amount</th>
-                      <th>Due Date</th>
-                      <th>Status</th>
-                      <th>Created Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {feeChalans.map(chalan => (
-                      <tr key={chalan.id}>
-                        <td>
-                          <Badge bg="primary" className="badge-enhanced">
-                            {chalan.chalanNumber}
-                          </Badge>
-                        </td>
-                        <td>{chalan.academicYear}</td>
-                        <td>
-                          <strong className="text-success">
-                            PKR {chalan.fees.totalAmount.toLocaleString()}
-                          </strong>
-                        </td>
-                        <td>
-                          {chalan.dueDate ? new Date(chalan.dueDate).toLocaleDateString() : 'N/A'}
-                        </td>
-                        <td>
-                          <Badge bg={getStatusColor(chalan.status)} className="badge-enhanced">
-                            <i className={`${getStatusIcon(chalan.status)} me-1`}></i>
-                            {chalan.status.charAt(0).toUpperCase() + chalan.status.slice(1)}
-                          </Badge>
-                        </td>
-                        <td>
-                          {chalan.createdAt ? new Date(chalan.createdAt.toDate()).toLocaleDateString() : 'N/A'}
-                        </td>
-                        <td>
-                          <Button 
-                            variant="outline-primary btn-enhanced" 
-                            size="sm"
-                            onClick={() => printFeeChalan(chalan)}
-                            title="Print Fee Chalan"
-                          >
-                            <i className="fas fa-print me-1"></i>
-                            Print
-                          </Button>
-                        </td>
+                <div className="table-responsive">
+                  <Table striped bordered hover className="table-enhanced" responsive>
+                    <thead>
+                      <tr>
+                        <th>Chalan Number</th>
+                        <th>Academic Year</th>
+                        <th>Total Amount</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Created Date</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {feeChalans.map(chalan => (
+                        <tr key={chalan.id}>
+                          <td>
+                            <Badge bg="primary" className="badge-enhanced">
+                              {chalan.chalanNumber}
+                            </Badge>
+                          </td>
+                          <td>{chalan.academicYear}</td>
+                          <td>
+                            <strong className="text-success">
+                              PKR {chalan.fees.totalAmount.toLocaleString()}
+                            </strong>
+                          </td>
+                          <td>
+                            {chalan.dueDate ? new Date(chalan.dueDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td>
+                            <Badge bg={getStatusColor(chalan.status)} className="badge-enhanced">
+                              <i className={`${getStatusIcon(chalan.status)} me-1`}></i>
+                              {chalan.status.charAt(0).toUpperCase() + chalan.status.slice(1)}
+                            </Badge>
+                          </td>
+                          <td>
+                            {chalan.createdAt ? new Date(chalan.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td>
+                            <Button 
+                              variant="outline-primary btn-enhanced" 
+                              size="sm"
+                              onClick={() => printFeeChalan(chalan)}
+                              title="Print Fee Chalan"
+                            >
+                              <i className="fas fa-print me-1"></i>
+                              Print
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-file-invoice-dollar fa-3x text-muted mb-3"></i>
