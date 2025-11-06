@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Container, Row, Col, Card, Form, Button, Alert, Tabs, Tab } from 'react-bootstrap';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { uploadToCloudinary } from '../utils/cloudinaryUpload';
 import { validatePassword, isValidEmail } from '../utils/validation';
 
 const Auth = () => {
@@ -27,6 +28,9 @@ const Auth = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [schoolName, setSchoolName] = useState('School Portal');
   const [passwordErrors, setPasswordErrors] = useState([]);
+  const [profileImage, setProfileImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const { signin, signup, userRole, currentUser, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -152,6 +156,44 @@ const Auth = () => {
     }
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file.');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB.');
+        return;
+      }
+      setProfileImage(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadProfileImage = async (userId) => {
+    if (!profileImage) return null;
+    
+    try {
+      setUploadingImage(true);
+      const result = await uploadToCloudinary(profileImage, `profile-images/${userId}`);
+      return result.url;
+    } catch (error) {
+      console.error('Error uploading image to Cloudinary:', error);
+      throw new Error('Failed to upload profile image.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleSignup = async (e) => {
     e.preventDefault();
     
@@ -214,7 +256,23 @@ const Auth = () => {
         ...(role === 'student' && { rollNumber, classId, parentId, parentName, parentCnic, studentBFormNumber, dob })
       };
       
-      await signup(email, password, userData);
+      const result = await signup(email, password, userData);
+      
+      // Upload image after user creation
+      if (profileImage && result?.user?.uid) {
+        try {
+          const imageURL = await uploadProfileImage(result.user.uid);
+          if (imageURL) {
+            // Update user document with image URL
+            const { updateDoc } = await import('firebase/firestore');
+            const userDocRef = doc(db, 'users', result.user.uid);
+            await updateDoc(userDocRef, { photoURL: imageURL });
+          }
+        } catch (imgError) {
+          console.error('Error uploading profile image:', imgError);
+          // Don't fail signup if image upload fails
+        }
+      }
       
       // Set redirecting flag and wait for userRole to be available
       setIsRedirecting(true);
@@ -489,6 +547,37 @@ const Auth = () => {
                           className="form-control-enhanced"
                           placeholder="Enter your address"
                         />
+                      </Form.Group>
+                      
+                      <Form.Group className="mb-3">
+                        <Form.Label style={{ fontWeight: 600, color: '#475569' }}>
+                          <i className="fas fa-image me-2" style={{ color: '#667eea' }}></i>
+                          Profile Image (Optional)
+                        </Form.Label>
+                        <Form.Control
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="form-control-enhanced"
+                        />
+                        {imagePreview && (
+                          <div className="mt-2">
+                            <img 
+                              src={imagePreview} 
+                              alt="Preview" 
+                              style={{ 
+                                maxWidth: '150px', 
+                                maxHeight: '150px', 
+                                borderRadius: '8px',
+                                objectFit: 'cover',
+                                border: '2px solid #667eea'
+                              }} 
+                            />
+                          </div>
+                        )}
+                        <Form.Text className="text-muted">
+                          Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
+                        </Form.Text>
                       </Form.Group>
                     
                       {role === 'student' && (
