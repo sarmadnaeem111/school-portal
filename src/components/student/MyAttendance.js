@@ -172,34 +172,36 @@ const MyAttendance = () => {
               </Button>
             </div>
           ) : (
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Class</th>
-                  <th>Status</th>
-                  <th>Time</th>
-                  <th>Teacher</th>
-                  <th>Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAttendance.map(record => (
-                  <tr key={record.id}>
-                    <td>{formatDate(record.date)}</td>
-                    <td>{record.className}</td>
-                    <td>
-                      <Badge bg={record.status === 'present' ? 'success' : 'danger'}>
-                        {record.status}
-                      </Badge>
-                    </td>
-                    <td>{record.time}</td>
-                    <td>{record.teacherName}</td>
-                    <td>{record.remarks || '-'}</td>
+            <div className="table-responsive">
+              <Table striped bordered hover responsive>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Class</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                    <th>Teacher</th>
+                    <th>Remarks</th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {filteredAttendance.map(record => (
+                    <tr key={record.id}>
+                      <td>{formatDate(record.date)}</td>
+                      <td>{record.className}</td>
+                      <td>
+                        <Badge bg={record.status === 'present' ? 'success' : 'danger'}>
+                          {record.status}
+                        </Badge>
+                      </td>
+                      <td>{record.time}</td>
+                      <td>{record.teacherName}</td>
+                      <td>{record.remarks || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
           )}
         </Card.Body>
       </Card>
