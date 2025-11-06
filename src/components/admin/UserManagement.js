@@ -4,6 +4,7 @@ import { Table, Button, Modal, Form, Row, Col, Card, Tab, Tabs } from 'react-boo
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, updateProfile, signOut, getAuth } from 'firebase/auth';
 import { initializeApp, deleteApp, getApps } from 'firebase/app';
+import { uploadToCloudinary } from '../../utils/cloudinaryUpload';
 import app, { auth, db } from '../../firebase/config';
 
 const UserManagement = () => {
@@ -14,6 +15,8 @@ const UserManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -56,6 +59,41 @@ const UserManagement = () => {
     const cls = classes.find(c => c.id === classId);
     if (!cls) return classId;
     return `${cls.name}${cls.section ? ' - ' + cls.section : ''}${cls.grade ? ' (Grade ' + cls.grade + ')' : ''}`;
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.');
+        return;
+      }
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size should be less than 5MB.');
+        return;
+      }
+      setProfileImage(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadProfileImage = async (userId) => {
+    if (!profileImage) return null;
+    
+    try {
+      const result = await uploadToCloudinary(profileImage, `profile-images/${userId}`);
+      return result.url;
+    } catch (error) {
+      console.error('Error uploading image to Cloudinary:', error);
+      throw new Error('Failed to upload profile image.');
+    }
   };
 
   // Helper function to get parent UID from email
@@ -110,6 +148,20 @@ const UserManagement = () => {
       if (editingUser) {
         // Update existing user
         let processedData = { ...formData }; // keep parentId as the email string provided
+        
+        // Upload new image if provided
+        if (profileImage) {
+          try {
+            const imageURL = await uploadProfileImage(editingUser.id);
+            if (imageURL) {
+              processedData.photoURL = imageURL;
+            }
+          } catch (imgError) {
+            console.error('Error uploading profile image:', imgError);
+            // Don't fail update if image upload fails
+          }
+        }
+        
         await updateDoc(doc(db, 'users', editingUser.id), processedData);
       } else {
         // Create new user without affecting current admin session using a secondary app
@@ -152,6 +204,20 @@ const UserManagement = () => {
           console.log('Saving user document to Firestore:', userDocData);
           await setDoc(doc(db, 'users', newlyCreatedUserId), userDocData);
           console.log('User document saved successfully');
+
+          // Upload image if provided
+          if (profileImage) {
+            try {
+              const imageURL = await uploadProfileImage(newlyCreatedUserId);
+              if (imageURL) {
+                await updateDoc(doc(db, 'users', newlyCreatedUserId), { photoURL: imageURL });
+                console.log('Profile image uploaded and saved');
+              }
+            } catch (imgError) {
+              console.error('Error uploading profile image:', imgError);
+              // Don't fail user creation if image upload fails
+            }
+          }
         } finally {
           try {
             await signOut(secondaryAuth);
@@ -181,6 +247,8 @@ const UserManagement = () => {
         gender: '',
         status: 'active'
       });
+      setProfileImage(null);
+      setImagePreview(null);
       fetchUsers();
       
       // Show success message
@@ -216,6 +284,8 @@ const UserManagement = () => {
       gender: user.gender || '',
       status: user.status || 'active'
     });
+    setProfileImage(null);
+    setImagePreview(user.photoURL || null);
     setShowModal(true);
   };
 
@@ -512,11 +582,44 @@ const UserManagement = () => {
                 </Col>
               </Row>
             )}
+            <Row>
+              <Col md={12}>
+                <Form.Group className="mb-3">
+                  <Form.Label>Profile Image {editingUser ? '(Leave empty to keep current)' : '(Optional)'}</Form.Label>
+                  <Form.Control
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                  />
+                  {imagePreview && (
+                    <div className="mt-2">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        style={{ 
+                          maxWidth: '150px', 
+                          maxHeight: '150px', 
+                          borderRadius: '8px',
+                          objectFit: 'cover',
+                          border: '2px solid #667eea'
+                        }} 
+                      />
+                    </div>
+                  )}
+                  <Form.Text className="text-muted">
+                    Maximum file size: 5MB. Supported formats: JPG, PNG, GIF
+                  </Form.Text>
+                </Form.Group>
+              </Col>
+            </Row>
           </Modal.Body>
           <Modal.Footer>
             <Button variant="secondary" onClick={() => {
               setShowModal(false);
               setSubmitting(false);
+              setProfileImage(null);
+              setImagePreview(null);
+              setEditingUser(null);
             }}>
               Cancel
             </Button>
