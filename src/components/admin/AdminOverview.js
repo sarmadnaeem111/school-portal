@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Row, Col, Card, Spinner, Button, Badge } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 
 const AdminOverview = () => {
+  const navigate = useNavigate();
+
   const [stats, setStats] = useState({
     totalStudents: 0,
     totalTeachers: 0,
@@ -213,19 +216,35 @@ const AdminOverview = () => {
             </Card.Header>
             <Card.Body className="p-4">
               <div className="d-grid gap-3">
-                <Button variant="primary btn-enhanced" className="d-flex align-items-center justify-content-center">
+                <Button 
+                  variant="primary btn-enhanced" 
+                  className="d-flex align-items-center justify-content-center"
+                  onClick={() => navigate('/admin/users#add-student')}
+                >
                   <i className="fas fa-user-plus me-2"></i>
                   Add New Student
                 </Button>
-                <Button variant="success btn-enhanced" className="d-flex align-items-center justify-content-center">
+                <Button 
+                  variant="success btn-enhanced" 
+                  className="d-flex align-items-center justify-content-center"
+                  onClick={() => navigate('/admin/users#add-teacher')}
+                >
                   <i className="fas fa-chalkboard-teacher me-2"></i>
                   Add New Teacher
                 </Button>
-                <Button variant="info btn-enhanced" className="d-flex align-items-center justify-content-center">
+                <Button 
+                  variant="info btn-enhanced" 
+                  className="d-flex align-items-center justify-content-center"
+                  onClick={() => navigate('/admin/classes#new-class')}
+                >
                   <i className="fas fa-school me-2"></i>
                   Create Class
                 </Button>
-                <Button variant="warning btn-enhanced" className="d-flex align-items-center justify-content-center">
+                <Button 
+                  variant="warning btn-enhanced" 
+                  className="d-flex align-items-center justify-content-center"
+                  onClick={() => navigate('/admin/announcements#compose')}
+                >
                   <i className="fas fa-bullhorn me-2"></i>
                   Send Announcement
                 </Button>
