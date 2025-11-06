@@ -76,20 +76,23 @@ const ParentDashboard = () => {
       <div className="flex-grow-1 d-flex flex-column">
         <Navbar expand="lg" className="navbar-enhanced">
           <Container fluid className="d-flex align-items-center">
-            <Button 
+       
+
+<Navbar.Toggle aria-controls="basic-navbar-nav" 
               variant="primary" 
-              className="me-3 menu-toggle-btn"
               onClick={toggleSidebar}
               title="Open Menu"
-            >
-              <i className="fas fa-bars"></i>
-            </Button>
+/>
+
+
+
+
             <Navbar.Brand className="d-flex align-items-center flex-grow-1">
               <i className="fas fa-users me-2" style={{ color: 'var(--secondary-color)' }}></i>
               <span className="d-none d-sm-inline">{schoolName} - Parent Dashboard</span>
               <span className="d-sm-none">Parent Dashboard</span>
             </Navbar.Brand>
-            <Navbar.Toggle aria-controls="basic-navbar-nav" />
+         
             <Navbar.Collapse id="basic-navbar-nav">
               <Nav className="ms-auto d-flex align-items-center flex-wrap">
                 <div className="d-flex align-items-center me-3 d-none d-sm-flex">
