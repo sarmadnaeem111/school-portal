@@ -624,6 +624,7 @@ const ParentFeeChalan = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {allFeeChalans.length > 0 ? (
+                <div className="table-responsive">
                 <Table striped bordered hover className="table-enhanced">
                   <thead>
                     <tr>
@@ -692,6 +693,7 @@ const ParentFeeChalan = () => {
                     ))}
                   </tbody>
                 </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-file-invoice-dollar fa-3x text-muted mb-3"></i>
@@ -718,6 +720,7 @@ const ParentFeeChalan = () => {
               </Card.Header>
               <Card.Body className="p-4">
                 {getChalansByChild(child.id).length > 0 ? (
+                  <div className="table-responsive">
                   <Table striped bordered hover className="table-enhanced">
                     <thead>
                       <tr>
@@ -771,6 +774,7 @@ const ParentFeeChalan = () => {
                       ))}
                     </tbody>
                   </Table>
+                  </div>
                 ) : (
                   <div className="text-center py-4">
                     <i className="fas fa-file-invoice-dollar fa-3x text-muted mb-3"></i>
