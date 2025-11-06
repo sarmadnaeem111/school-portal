@@ -109,9 +109,10 @@ const ClassManagement = () => {
       </div>
 
       <Row>
-        <Col md={6}>
+        <Col md={6} className="mb-4">
           <h4>Classes</h4>
-          <Table striped bordered hover>
+          <div className="table-responsive">
+          <Table striped bordered hover className="table-enhanced">
             <thead>
               <tr>
                 <th>Name</th>
@@ -151,11 +152,13 @@ const ClassManagement = () => {
               ))}
             </tbody>
           </Table>
+          </div>
         </Col>
 
-        <Col md={6}>
+        <Col md={6} className="mb-4">
           <h4>Subjects</h4>
-          <Table striped bordered hover>
+          <div className="table-responsive">
+          <Table striped bordered hover className="table-enhanced">
             <thead>
               <tr>
                 <th>Name</th>
@@ -193,6 +196,7 @@ const ClassManagement = () => {
               ))}
             </tbody>
           </Table>
+          </div>
         </Col>
       </Row>
 
