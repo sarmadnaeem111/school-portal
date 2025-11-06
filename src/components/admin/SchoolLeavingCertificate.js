@@ -1075,7 +1075,8 @@ const SchoolLeavingCertificate = () => {
             <h5>Students in {getClassName(selectedClass)}</h5>
           </Card.Header>
           <Card.Body>
-            <Table striped bordered hover>
+            <div className="table-responsive">
+            <Table striped bordered hover className="table-enhanced">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -1106,6 +1107,7 @@ const SchoolLeavingCertificate = () => {
                 ))}
               </tbody>
             </Table>
+            </div>
           </Card.Body>
         </Card>
       )}
@@ -1457,7 +1459,8 @@ const SchoolLeavingCertificate = () => {
         </Modal.Header>
         <Modal.Body>
           {savedCertificates.length > 0 ? (
-            <Table striped bordered hover>
+            <div className="table-responsive">
+            <Table striped bordered hover className="table-enhanced">
               <thead>
                 <tr>
                   <th>Student Name</th>
@@ -1514,6 +1517,7 @@ const SchoolLeavingCertificate = () => {
                 ))}
               </tbody>
             </Table>
+            </div>
           ) : (
             <div className="text-center py-4">
               <i className="fas fa-certificate fa-3x text-muted mb-3"></i>
