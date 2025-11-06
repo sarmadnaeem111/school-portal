@@ -495,44 +495,46 @@ const StudentResults = () => {
                   </Col>
                 </Row>
 
-                <Table striped bordered hover size="sm" className="table-enhanced">
-                  <thead>
-                    <tr>
-                      <th>Subject</th>
-                      <th>Code</th>
-                      <th>Marks</th>
-                      <th>Percentage</th>
-                      <th>Grade</th>
-                      <th>Exams</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.subjectResults.map(subject => (
-                      <tr key={subject.subjectId}>
-                        <td>{subject.subjectName}</td>
-                        <td>{subject.subjectCode}</td>
-                        <td>
-                          {subject.totalMarks > 0 
-                            ? `${safeToFixed(subject.obtainedMarks, 0)} / ${safeToFixed(subject.totalMarks, 0)}`
-                            : 'No Exams'
-                          }
-                        </td>
-                        <td>
-                          {subject.totalMarks > 0 
-                            ? `${safeToFixed(subject.percentage, 1)}%`
-                            : 'N/A'
-                          }
-                        </td>
-                        <td>
-                          <Badge bg={getGradeColor(subject.grade)} className="badge-enhanced">
-                            {subject.grade}
-                          </Badge>
-                        </td>
-                        <td>{subject.examCount}</td>
+                <div className="table-responsive">
+                  <Table striped bordered hover size="sm" className="table-enhanced" responsive>
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Code</th>
+                        <th>Marks</th>
+                        <th>Percentage</th>
+                        <th>Grade</th>
+                        <th>Exams</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {result.subjectResults.map(subject => (
+                        <tr key={subject.subjectId}>
+                          <td>{subject.subjectName}</td>
+                          <td>{subject.subjectCode}</td>
+                          <td>
+                            {subject.totalMarks > 0 
+                              ? `${safeToFixed(subject.obtainedMarks, 0)} / ${safeToFixed(subject.totalMarks, 0)}`
+                              : 'No Exams'
+                            }
+                          </td>
+                          <td>
+                            {subject.totalMarks > 0 
+                              ? `${safeToFixed(subject.percentage, 1)}%`
+                              : 'N/A'
+                            }
+                          </td>
+                          <td>
+                            <Badge bg={getGradeColor(subject.grade)} className="badge-enhanced">
+                              {subject.grade}
+                            </Badge>
+                          </td>
+                          <td>{subject.examCount}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
               </Card.Body>
             </Card>
           ))}
