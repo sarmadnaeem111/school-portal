@@ -109,7 +109,8 @@ const ParentTimetable = () => {
       <Card.Body>
         {error && <Alert variant="warning">{error}</Alert>}
         {!error && timetable && (
-          <Table bordered responsive>
+          <div className="table-responsive">
+          <Table bordered className="table-enhanced">
             <thead>
               <tr>
                 <th>Day / Slot</th>
@@ -137,6 +138,7 @@ const ParentTimetable = () => {
               ))}
             </tbody>
           </Table>
+          </div>
         )}
         {!error && !timetable && (
           <Alert variant="info" className="mb-0">No timetable available.</Alert>
