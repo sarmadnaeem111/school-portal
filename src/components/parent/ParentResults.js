@@ -498,6 +498,7 @@ const ParentResults = () => {
                   </div>
                 </div>
 
+                <div className="table-responsive">
                 <Table striped bordered hover className="table-enhanced">
                   <thead>
                     <tr>
@@ -569,6 +570,7 @@ const ParentResults = () => {
                     })()}
                   </tbody>
                 </Table>
+                </div>
               </Card.Body>
             </Card>
           ) : (
