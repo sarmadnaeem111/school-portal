@@ -736,6 +736,7 @@ const AdminResults = () => {
                   </Col>
                 </Row>
 
+                <div className="table-responsive">
                 <Table striped bordered hover size="sm" className="table-enhanced">
                   <thead>
                     <tr>
@@ -774,6 +775,7 @@ const AdminResults = () => {
                     ))}
                   </tbody>
                 </Table>
+                </div>
               </Card.Body>
             </Card>
           ))}
