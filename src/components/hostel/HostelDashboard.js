@@ -261,6 +261,23 @@ const HostelDashboard = () => {
         ]}
       />)}
       <div className="flex-grow-1 d-flex flex-column container-enhanced">
+        {!isAdminView && (
+          <div className="mb-2 d-mobile">
+            <Button
+              variant="light"
+              className="border-0 shadow-sm rounded-3 p-2"
+              onClick={() => { const s=document.querySelector('.sidebar-enhanced'); const o=document.querySelector('.sidebar-overlay'); if (s&&o){s.classList.add('show'); o.classList.add('show');}}}
+              title="Open Menu"
+              style={{ width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6" stroke="#333" strokeWidth="2" strokeLinecap="round" />
+                <line x1="3" y1="12" x2="21" y2="12" stroke="#333" strokeWidth="2" strokeLinecap="round" />
+                <line x1="3" y1="18" x2="21" y2="18" stroke="#333" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </Button>
+          </div>
+        )}
         <div className="mb-4">
           <h2 className="mb-1" style={{ background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             <i className="fas fa-hotel me-3"></i>
