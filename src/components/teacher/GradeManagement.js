@@ -248,47 +248,49 @@ const GradeManagement = () => {
             <h5>Grades for {subjects.find(s => s.id === selectedSubject)?.name}</h5>
           </Card.Header>
           <Card.Body>
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>Student Name</th>
-                  <th>Term</th>
-                  <th>Exam Type</th>
-                  <th>Marks</th>
-                  <th>Percentage</th>
-                  <th>Grade</th>
-                  <th>Remarks</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {grades.map(grade => (
-                  <tr key={grade.id}>
-                    <td>{getStudentName(grade.studentId)}</td>
-                    <td className="text-capitalize">{grade.term || '-'}</td>
-                    <td>{grade.examType}</td>
-                    <td>{grade.marks}/{grade.maxMarks}</td>
-                    <td>
-                      <Badge bg={getGradeColor(grade.percentage)}>
-                        {grade.percentage.toFixed(1)}%
-                      </Badge>
-                    </td>
-                    <td>
-                      {grade.percentage >= 90 ? 'A+' :
-                       grade.percentage >= 80 ? 'A' :
-                       grade.percentage >= 70 ? 'B' :
-                       grade.percentage >= 60 ? 'C' : 'D'}
-                    </td>
-                    <td>{grade.remarks || '-'}</td>
-                    <td>
-                      <Button variant="outline-primary" size="sm" onClick={() => handleEdit(grade)}>
-                        Edit
-                      </Button>
-                    </td>
+            <div className="table-responsive">
+              <Table striped bordered hover>
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Term</th>
+                    <th>Exam Type</th>
+                    <th>Marks</th>
+                    <th>Percentage</th>
+                    <th>Grade</th>
+                    <th>Remarks</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </Table>
+                </thead>
+                <tbody>
+                  {grades.map(grade => (
+                    <tr key={grade.id}>
+                      <td>{getStudentName(grade.studentId)}</td>
+                      <td className="text-capitalize">{grade.term || '-'}</td>
+                      <td>{grade.examType}</td>
+                      <td>{grade.marks}/{grade.maxMarks}</td>
+                      <td>
+                        <Badge bg={getGradeColor(grade.percentage)}>
+                          {grade.percentage.toFixed(1)}%
+                        </Badge>
+                      </td>
+                      <td>
+                        {grade.percentage >= 90 ? 'A+' :
+                         grade.percentage >= 80 ? 'A' :
+                         grade.percentage >= 70 ? 'B' :
+                         grade.percentage >= 60 ? 'C' : 'D'}
+                      </td>
+                      <td>{grade.remarks || '-'}</td>
+                      <td>
+                        <Button variant="outline-primary" size="sm" onClick={() => handleEdit(grade)}>
+                          Edit
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
           </Card.Body>
         </Card>
       )}
