@@ -220,33 +220,35 @@ const StudentOverview = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {grades.length > 0 ? (
-                <Table striped bordered hover size="sm" className="table-enhanced">
-                  <thead>
-                    <tr>
-                      <th>Subject</th>
-                      <th>Exam Type</th>
-                      <th>Grade</th>
-                      <th>Percentage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {grades.slice(0, 5).map(grade => (
-                      <tr key={grade.id}>
-                        <td>{grade.subjectName}</td>
-                        <td>{grade.examType}</td>
-                        <td>
-                          <Badge bg={getGradeColor(grade.percentage)} className="badge-enhanced">
-                            {grade.percentage >= 90 ? 'A+' :
-                             grade.percentage >= 80 ? 'A' :
-                             grade.percentage >= 70 ? 'B' :
-                             grade.percentage >= 60 ? 'C' : 'D'}
-                          </Badge>
-                        </td>
-                        <td>{grade.percentage ? grade.percentage.toFixed(1) : '0.0'}%</td>
+                <div className="table-responsive">
+                  <Table striped bordered hover size="sm" className="table-enhanced">
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Exam Type</th>
+                        <th>Grade</th>
+                        <th>Percentage</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {grades.slice(0, 5).map(grade => (
+                        <tr key={grade.id}>
+                          <td>{grade.subjectName}</td>
+                          <td>{grade.examType}</td>
+                          <td>
+                            <Badge bg={getGradeColor(grade.percentage)} className="badge-enhanced">
+                              {grade.percentage >= 90 ? 'A+' :
+                               grade.percentage >= 80 ? 'A' :
+                               grade.percentage >= 70 ? 'B' :
+                               grade.percentage >= 60 ? 'C' : 'D'}
+                            </Badge>
+                          </td>
+                          <td>{grade.percentage ? grade.percentage.toFixed(1) : '0.0'}%</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
@@ -312,39 +314,41 @@ const StudentOverview = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {subjects.length > 0 ? (
-                <Table striped bordered hover className="table-enhanced">
-                  <thead>
-                    <tr>
-                      <th>Subject Name</th>
-                      <th>Subject Code</th>
-                      <th>Teacher</th>
-                      <th>Recent Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {subjects.map(subject => {
-                      const subjectGrades = grades.filter(grade => grade.subjectId === subject.id);
-                      const latestGrade = subjectGrades.length > 0 ? subjectGrades[subjectGrades.length - 1] : null;
-                      
-                      return (
-                        <tr key={subject.id}>
-                          <td>{subject.name}</td>
-                          <td>{subject.code}</td>
-                          <td>{subject.teacherName || 'Not Assigned'}</td>
-                          <td>
-                            {latestGrade ? (
-                              <Badge bg={getGradeColor(latestGrade.percentage)} className="badge-enhanced">
-                                {latestGrade.percentage ? latestGrade.percentage.toFixed(1) : '0.0'}%
-                              </Badge>
-                            ) : (
-                              <span className="text-muted">No grades yet</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
+                <div className="table-responsive">
+                  <Table striped bordered hover className="table-enhanced">
+                    <thead>
+                      <tr>
+                        <th>Subject Name</th>
+                        <th>Subject Code</th>
+                        <th>Teacher</th>
+                        <th>Recent Grade</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {subjects.map(subject => {
+                        const subjectGrades = grades.filter(grade => grade.subjectId === subject.id);
+                        const latestGrade = subjectGrades.length > 0 ? subjectGrades[subjectGrades.length - 1] : null;
+                        
+                        return (
+                          <tr key={subject.id}>
+                            <td>{subject.name}</td>
+                            <td>{subject.code}</td>
+                            <td>{subject.teacherName || 'Not Assigned'}</td>
+                            <td>
+                              {latestGrade ? (
+                                <Badge bg={getGradeColor(latestGrade.percentage)} className="badge-enhanced">
+                                  {latestGrade.percentage ? latestGrade.percentage.toFixed(1) : '0.0'}%
+                                </Badge>
+                              ) : (
+                                <span className="text-muted">No grades yet</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-book fa-3x text-muted mb-3"></i>
