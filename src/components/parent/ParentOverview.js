@@ -213,6 +213,7 @@ const ParentOverview = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {children.length > 0 ? (
+                <div className="table-responsive">
                 <Table striped bordered hover size="sm" className="table-enhanced">
                   <thead>
                     <tr>
@@ -231,6 +232,7 @@ const ParentOverview = () => {
                     ))}
                   </tbody>
                 </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-child fa-3x text-muted mb-3"></i>
@@ -256,6 +258,7 @@ const ParentOverview = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {recentGrades.length > 0 ? (
+                <div className="table-responsive">
                 <Table striped bordered hover size="sm" className="table-enhanced">
                   <thead>
                     <tr>
@@ -281,6 +284,7 @@ const ParentOverview = () => {
                     ))}
                   </tbody>
                 </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
