@@ -96,7 +96,8 @@ export const AuthProvider = ({ children }) => {
       // Reset rate limit on success
       rateLimiter.reset(rateKey);
 
-      return result;
+      // Return result with user data for image upload
+      return { ...result, userData: userDocData };
     } catch (error) {
       throw new Error(getSecureErrorMessage(error));
     }
