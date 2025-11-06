@@ -188,26 +188,28 @@ const TeacherOverview = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {assignedClasses.length > 0 ? (
-                <Table striped bordered hover size="sm" className="table-enhanced">
-                  <thead>
-                    <tr>
-                      <th>Class</th>
-                      <th>Grade</th>
-                      <th>Section</th>
-                      <th>Students</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assignedClasses.map(cls => (
-                      <tr key={cls.id}>
-                        <td>{cls.name}</td>
-                        <td>{cls.grade}</td>
-                        <td>{cls.section}</td>
-                        <td>{cls.capacity}</td>
+                <div className="table-responsive">
+                  <Table striped bordered hover size="sm" className="table-enhanced">
+                    <thead>
+                      <tr>
+                        <th>Class</th>
+                        <th>Grade</th>
+                        <th>Section</th>
+                        <th>Students</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {assignedClasses.map(cls => (
+                        <tr key={cls.id}>
+                          <td>{cls.name}</td>
+                          <td>{cls.grade}</td>
+                          <td>{cls.section}</td>
+                          <td>{cls.capacity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-chalkboard-teacher fa-3x text-muted mb-3"></i>
@@ -233,24 +235,26 @@ const TeacherOverview = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {assignedSubjects.length > 0 ? (
-                <Table striped bordered hover size="sm" className="table-enhanced">
-                  <thead>
-                    <tr>
-                      <th>Subject</th>
-                      <th>Code</th>
-                      <th>Class</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assignedSubjects.map(subject => (
-                      <tr key={subject.id}>
-                        <td>{subject.name}</td>
-                        <td>{subject.code}</td>
-                        <td>{getClassName(subject.classId)}</td>
+                <div className="table-responsive">
+                  <Table striped bordered hover size="sm" className="table-enhanced">
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th>Code</th>
+                        <th>Class</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {assignedSubjects.map(subject => (
+                        <tr key={subject.id}>
+                          <td>{subject.name}</td>
+                          <td>{subject.code}</td>
+                          <td>{getClassName(subject.classId)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-book fa-3x text-muted mb-3"></i>
@@ -278,30 +282,32 @@ const TeacherOverview = () => {
             </Card.Header>
             <Card.Body className="p-4">
               {recentAttendance.length > 0 ? (
-                <Table striped bordered hover className="table-enhanced">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Class</th>
-                      <th>Student</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentAttendance.map(record => (
-                      <tr key={record.id}>
-                        <td>{record.date}</td>
-                        <td>{record.className}</td>
-                        <td>{record.studentName}</td>
-                        <td>
-                          <Badge bg={record.status === 'present' ? 'success' : 'danger'} className="badge-enhanced">
-                            {record.status}
-                          </Badge>
-                        </td>
+                <div className="table-responsive">
+                  <Table striped bordered hover className="table-enhanced">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Class</th>
+                        <th>Student</th>
+                        <th>Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </Table>
+                    </thead>
+                    <tbody>
+                      {recentAttendance.map(record => (
+                        <tr key={record.id}>
+                          <td>{record.date}</td>
+                          <td>{record.className}</td>
+                          <td>{record.studentName}</td>
+                          <td>
+                            <Badge bg={record.status === 'present' ? 'success' : 'danger'} className="badge-enhanced">
+                              {record.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <i className="fas fa-calendar-check fa-3x text-muted mb-3"></i>
