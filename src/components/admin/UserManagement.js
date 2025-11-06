@@ -551,7 +551,8 @@ const UserManagement = () => {
 
 const UserTable = ({ users, onEdit, onDelete, role, getClassName, onSetStatus }) => {
   return (
-    <Table striped bordered hover>
+    <div className="table-responsive">
+    <Table striped bordered hover className="table-enhanced">
       <thead>
         <tr>
           <th>Name</th>
@@ -608,6 +609,7 @@ const UserTable = ({ users, onEdit, onDelete, role, getClassName, onSetStatus })
         ))}
       </tbody>
     </Table>
+    </div>
   );
 };
 
