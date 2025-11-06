@@ -162,7 +162,8 @@ const AttendanceView = () => {
               <h5>Attendance Details - {selectedChildData.name}</h5>
             </Card.Header>
             <Card.Body>
-              <Table striped bordered hover>
+              <div className="table-responsive">
+              <Table striped bordered hover className="table-enhanced">
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -190,6 +191,7 @@ const AttendanceView = () => {
                   ))}
                 </tbody>
               </Table>
+              </div>
             </Card.Body>
           </Card>
         </>
