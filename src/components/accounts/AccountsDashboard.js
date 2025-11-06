@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Tabs, Tab, Card, Row, Col, Form, Button, Table, Alert, Badge, ProgressBar } from 'react-bootstrap';
+import { Navbar, Tabs, Tab, Card, Row, Col, Form, Button, Table, Alert, Badge, ProgressBar } from 'react-bootstrap';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp, query, where } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { useAuth } from '../../contexts/AuthContext';
@@ -110,6 +110,12 @@ const AccountsDashboard = () => {
   };
 
   const handleLogout = async () => { try { await logout(); navigate('/login'); } catch(e) {} };
+
+  const toggleSidebar = () => {
+    const s = document.querySelector('.sidebar-enhanced');
+    const o = document.querySelector('.sidebar-overlay');
+    if (s && o) { s.classList.toggle('show'); o.classList.toggle('show'); }
+  };
 
   const getStudentName = (id) => (students.find(s => s.id === id)?.name) || 'N/A';
 
@@ -265,6 +271,25 @@ const AccountsDashboard = () => {
         ]}
       />)}
       <div className="flex-grow-1 d-flex flex-column container-enhanced">
+        {!isAdminView && (
+          <div className="mb-2 d-mobile" style={{ display: 'flex', alignItems: 'center' }}>
+            <Button 
+              variant="light" 
+              className="shadow-sm rounded-3"
+              onClick={toggleSidebar}
+              title="Open Menu"
+              aria-label="Open Menu"
+              style={{ width: 42, height: 42, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,0,0,0.1)' }}
+            >
+              <span style={{ display:'inline-block', width: 20 }}>
+                <span style={{ display:'block', height:2, background:'#6c757d', borderRadius:2 }}></span>
+                <span style={{ display:'block', height:2, background:'#6c757d', borderRadius:2, margin:'4px 0' }}></span>
+                <span style={{ display:'block', height:2, background:'#6c757d', borderRadius:2 }}></span>
+              </span>
+            </Button>
+          </div>
+        )}
+        
         <div className="mb-4">
           <h2 className="mb-1" style={{ background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             <i className="fas fa-calculator me-3"></i>
