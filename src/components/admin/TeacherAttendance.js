@@ -560,8 +560,8 @@ const TeacherAttendance = () => {
   const stats = getAttendanceStats();
 
   return (
-    <div>
-      <h2 className="mb-4">Teacher Attendance</h2>
+    <div className="container-fluid px-2 px-md-3">
+      <h2 className="mb-3 mb-md-4 fs-4 fs-md-3">Teacher Attendance</h2>
       
       {message && (
         <Alert variant={messageType} onClose={() => setMessage('')} dismissible>
@@ -570,7 +570,7 @@ const TeacherAttendance = () => {
       )}
 
       <Row className="mb-4">
-        <Col md={4}>
+        <Col xs={12} md={4} className="mb-3 mb-md-0">
           <Form.Group>
             <Form.Label>Select Date</Form.Label>
             <Form.Control
@@ -580,83 +580,91 @@ const TeacherAttendance = () => {
             />
           </Form.Group>
         </Col>
-        <Col md={8} className="d-flex align-items-end gap-2 flex-wrap">
-          <Button variant="primary" onClick={fetchTeacherAttendance}>
-            <i className="fas fa-sync-alt me-2"></i>
-            Refresh
-          </Button>
-          <Button variant="dark" onClick={() => openQrScan('arrival')}>
-            <i className="fas fa-qrcode me-2"></i>
-            Scan QR - Arrival
-          </Button>
-          <Button variant="secondary" onClick={() => openQrScan('departure')}>
-            <i className="fas fa-qrcode me-2"></i>
-            Scan QR - Departure
-          </Button>
-          <Button variant="outline-dark" onClick={() => openFingerprintScan('arrival')}>
-            <i className="fas fa-fingerprint me-2"></i>
-            Fingerprint - Arrival
-          </Button>
-          <Button variant="outline-secondary" onClick={() => openFingerprintScan('departure')}>
-            <i className="fas fa-fingerprint me-2"></i>
-            Fingerprint - Departure
-          </Button>
-          <Button variant="outline-primary" onClick={() => window.location.assign('/admin/teacher-qr-cards')}>
-            <i className="fas fa-print me-2"></i>
-            Print Teacher QR Cards
-          </Button>
+        <Col xs={12} md={8}>
+          <div className="d-flex align-items-end gap-2 flex-wrap">
+            <Button variant="primary" onClick={fetchTeacherAttendance} className="mb-2 mb-md-0">
+              <i className="fas fa-sync-alt me-2"></i>
+              <span className="d-none d-sm-inline">Refresh</span>
+              <span className="d-sm-none">Refresh</span>
+            </Button>
+            <Button variant="dark" onClick={() => openQrScan('arrival')} className="mb-2 mb-md-0">
+              <i className="fas fa-qrcode me-2"></i>
+              <span className="d-none d-sm-inline">Scan QR - Arrival</span>
+              <span className="d-sm-none">QR Arrival</span>
+            </Button>
+            <Button variant="secondary" onClick={() => openQrScan('departure')} className="mb-2 mb-md-0">
+              <i className="fas fa-qrcode me-2"></i>
+              <span className="d-none d-sm-inline">Scan QR - Departure</span>
+              <span className="d-sm-none">QR Departure</span>
+            </Button>
+            <Button variant="outline-dark" onClick={() => openFingerprintScan('arrival')} className="mb-2 mb-md-0">
+              <i className="fas fa-fingerprint me-2"></i>
+              <span className="d-none d-md-inline">Fingerprint - Arrival</span>
+              <span className="d-md-none">FP Arrival</span>
+            </Button>
+            <Button variant="outline-secondary" onClick={() => openFingerprintScan('departure')} className="mb-2 mb-md-0">
+              <i className="fas fa-fingerprint me-2"></i>
+              <span className="d-none d-md-inline">Fingerprint - Departure</span>
+              <span className="d-md-none">FP Departure</span>
+            </Button>
+            <Button variant="outline-primary" onClick={() => window.location.assign('/admin/teacher-qr-cards')} className="mb-2 mb-md-0">
+              <i className="fas fa-print me-2"></i>
+              <span className="d-none d-md-inline">Print Teacher QR Cards</span>
+              <span className="d-md-none">Print QR</span>
+            </Button>
+          </div>
         </Col>
       </Row>
 
       <Row className="mb-4">
-        <Col md={3}>
-          <Card className="text-center">
+        <Col xs={6} sm={6} md={3} className="mb-3 mb-md-0">
+          <Card className="text-center h-100">
             <Card.Body>
               <Card.Title className="text-primary">
                 <i className="fas fa-chalkboard-teacher fa-2x"></i>
               </Card.Title>
               <Card.Text>
-                <h3>{stats.totalTeachers}</h3>
-                <p className="text-muted">Total Teachers</p>
+                <h3 className="mb-1">{stats.totalTeachers}</h3>
+                <p className="text-muted mb-0 small">Total Teachers</p>
               </Card.Text>
             </Card.Body>
           </Card>
         </Col>
-        <Col md={3}>
-          <Card className="text-center">
+        <Col xs={6} sm={6} md={3} className="mb-3 mb-md-0">
+          <Card className="text-center h-100">
             <Card.Body>
               <Card.Title className="text-success">
                 <i className="fas fa-check-circle fa-2x"></i>
               </Card.Title>
               <Card.Text>
-                <h3>{stats.presentTeachers}</h3>
-                <p className="text-muted">Present</p>
+                <h3 className="mb-1">{stats.presentTeachers}</h3>
+                <p className="text-muted mb-0 small">Present</p>
               </Card.Text>
             </Card.Body>
           </Card>
         </Col>
-        <Col md={3}>
-          <Card className="text-center">
+        <Col xs={6} sm={6} md={3} className="mb-3 mb-md-0">
+          <Card className="text-center h-100">
             <Card.Body>
               <Card.Title className="text-danger">
                 <i className="fas fa-times-circle fa-2x"></i>
               </Card.Title>
               <Card.Text>
-                <h3>{stats.absentTeachers}</h3>
-                <p className="text-muted">Absent</p>
+                <h3 className="mb-1">{stats.absentTeachers}</h3>
+                <p className="text-muted mb-0 small">Absent</p>
               </Card.Text>
             </Card.Body>
           </Card>
         </Col>
-        <Col md={3}>
-          <Card className="text-center">
+        <Col xs={6} sm={6} md={3} className="mb-3 mb-md-0">
+          <Card className="text-center h-100">
             <Card.Body>
               <Card.Title className="text-info">
                 <i className="fas fa-percentage fa-2x"></i>
               </Card.Title>
               <Card.Text>
-                <h3>{stats.attendancePercentage.toFixed(1)}%</h3>
-                <p className="text-muted">Attendance Rate</p>
+                <h3 className="mb-1">{stats.attendancePercentage.toFixed(1)}%</h3>
+                <p className="text-muted mb-0 small">Attendance Rate</p>
               </Card.Text>
             </Card.Body>
           </Card>
@@ -665,81 +673,183 @@ const TeacherAttendance = () => {
 
       <Card>
         <Card.Header>
-          <h5>Teacher Attendance Management - {selectedDate}</h5>
+          <h5 className="mb-0">Teacher Attendance Management - {selectedDate}</h5>
         </Card.Header>
-        <Card.Body>
+        <Card.Body className="p-0 p-md-3">
           {loading ? (
-            <div className="text-center">Loading...</div>
+            <div className="text-center p-4">Loading...</div>
           ) : (
-            <Table striped bordered hover>
-              <thead>
-                <tr>
-                  <th>Teacher Name</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Arrival Time</th>
-                  <th>Departure Time</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Desktop Table View */}
+              <div className="d-none d-md-block">
+                <div className="table-responsive">
+                  <Table striped bordered hover className="mb-0">
+                    <thead>
+                      <tr>
+                        <th>Teacher Name</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Arrival Time</th>
+                        <th>Departure Time</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {teachers.map(teacher => {
+                        const attendance = getTeacherAttendanceStatus(teacher.id);
+                        return (
+                          <tr key={teacher.id}>
+                            <td>{teacher.name}</td>
+                            <td>{teacher.email}</td>
+                            <td>
+                              <div className="d-flex align-items-center gap-2">
+                                <Badge bg={attendance.status === 'present' ? 'success' : 'danger'}>
+                                  {attendance.status}
+                                </Badge>
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
+                                  onClick={() => openStatusModal(teacher.id, attendance.status)}
+                                  title="Edit status"
+                                >
+                                  <i className="fas fa-edit"></i>
+                                </Button>
+                              </div>
+                            </td>
+                            <td>
+                              {attendance.arrivalTime ? (
+                                <div className="d-flex align-items-center gap-2">
+                                  <span>{formatTo12Hour(attendance.arrivalTime)}</span>
+                                  <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    onClick={() => openEditTimeModal(teacher.id, 'arrival', attendance.arrivalTime)}
+                                    title="Edit arrival time"
+                                  >
+                                    <i className="fas fa-edit"></i>
+                                  </Button>
+                                </div>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                            <td>
+                              {attendance.departureTime ? (
+                                <div className="d-flex align-items-center gap-2">
+                                  <span>{formatTo12Hour(attendance.departureTime)}</span>
+                                  <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    onClick={() => openEditTimeModal(teacher.id, 'departure', attendance.departureTime)}
+                                    title="Edit departure time"
+                                  >
+                                    <i className="fas fa-edit"></i>
+                                  </Button>
+                                </div>
+                              ) : (
+                                '-'
+                              )}
+                            </td>
+                            <td>
+                              <div className="d-flex gap-2">
+                                {!attendance.arrivalTime && (
+                                  <Button
+                                    variant="success"
+                                    size="sm"
+                                    onClick={() => markAttendance(teacher.id, 'arrival')}
+                                  >
+                                    <i className="fas fa-sign-in-alt me-1"></i>
+                                    Mark Arrival
+                                  </Button>
+                                )}
+                                {attendance.arrivalTime && !attendance.departureTime && (
+                                  <Button
+                                    variant="warning"
+                                    size="sm"
+                                    onClick={() => markAttendance(teacher.id, 'departure')}
+                                  >
+                                    <i className="fas fa-sign-out-alt me-1"></i>
+                                    Mark Departure
+                                  </Button>
+                                )}
+                                {attendance.arrivalTime && attendance.departureTime && (
+                                  <span className="text-muted">Complete</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+                </div>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="d-md-none">
                 {teachers.map(teacher => {
                   const attendance = getTeacherAttendanceStatus(teacher.id);
                   return (
-                    <tr key={teacher.id}>
-                      <td>{teacher.name}</td>
-                      <td>{teacher.email}</td>
-                      <td>
-                        <div className="d-flex align-items-center gap-2">
+                    <Card key={teacher.id} className="mb-3">
+                      <Card.Body>
+                        <div className="d-flex justify-content-between align-items-start mb-2">
+                          <div>
+                            <h6 className="mb-1 fw-bold">{teacher.name}</h6>
+                            <small className="text-muted d-block">{teacher.email}</small>
+                          </div>
                           <Badge bg={attendance.status === 'present' ? 'success' : 'danger'}>
                             {attendance.status}
                           </Badge>
+                        </div>
+                        
+                        <Row className="mt-3">
+                          <Col xs={6} className="mb-2">
+                            <small className="text-muted d-block">Arrival Time</small>
+                            {attendance.arrivalTime ? (
+                              <div className="d-flex align-items-center gap-2">
+                                <span className="fw-bold">{formatTo12Hour(attendance.arrivalTime)}</span>
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
+                                  onClick={() => openEditTimeModal(teacher.id, 'arrival', attendance.arrivalTime)}
+                                  title="Edit arrival time"
+                                >
+                                  <i className="fas fa-edit"></i>
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted">-</span>
+                            )}
+                          </Col>
+                          <Col xs={6} className="mb-2">
+                            <small className="text-muted d-block">Departure Time</small>
+                            {attendance.departureTime ? (
+                              <div className="d-flex align-items-center gap-2">
+                                <span className="fw-bold">{formatTo12Hour(attendance.departureTime)}</span>
+                                <Button
+                                  variant="outline-secondary"
+                                  size="sm"
+                                  onClick={() => openEditTimeModal(teacher.id, 'departure', attendance.departureTime)}
+                                  title="Edit departure time"
+                                >
+                                  <i className="fas fa-edit"></i>
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-muted">-</span>
+                            )}
+                          </Col>
+                        </Row>
+
+                        <div className="d-flex flex-wrap gap-2 mt-3">
                           <Button
                             variant="outline-secondary"
                             size="sm"
                             onClick={() => openStatusModal(teacher.id, attendance.status)}
-                            title="Edit status"
                           >
-                            <i className="fas fa-edit"></i>
+                            <i className="fas fa-edit me-1"></i>
+                            Edit Status
                           </Button>
-                        </div>
-                      </td>
-                      <td>
-                        {attendance.arrivalTime ? (
-                          <div className="d-flex align-items-center gap-2">
-                            <span>{formatTo12Hour(attendance.arrivalTime)}</span>
-                            <Button
-                              variant="outline-secondary"
-                              size="sm"
-                              onClick={() => openEditTimeModal(teacher.id, 'arrival', attendance.arrivalTime)}
-                              title="Edit arrival time"
-                            >
-                              <i className="fas fa-edit"></i>
-                            </Button>
-                          </div>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td>
-                        {attendance.departureTime ? (
-                          <div className="d-flex align-items-center gap-2">
-                            <span>{formatTo12Hour(attendance.departureTime)}</span>
-                            <Button
-                              variant="outline-secondary"
-                              size="sm"
-                              onClick={() => openEditTimeModal(teacher.id, 'departure', attendance.departureTime)}
-                              title="Edit departure time"
-                            >
-                              <i className="fas fa-edit"></i>
-                            </Button>
-                          </div>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td>
-                        <div className="d-flex gap-2">
                           {!attendance.arrivalTime && (
                             <Button
                               variant="success"
@@ -761,23 +871,23 @@ const TeacherAttendance = () => {
                             </Button>
                           )}
                           {attendance.arrivalTime && attendance.departureTime && (
-                            <span className="text-muted">Complete</span>
+                            <Badge bg="info">Complete</Badge>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </Card.Body>
+                    </Card>
                   );
                 })}
-              </tbody>
-            </Table>
+              </div>
+            </>
           )}
         </Card.Body>
       </Card>
 
       {/* Time Input Modal */}
-      <Modal show={showTimeModal} onHide={() => setShowTimeModal(false)}>
+      <Modal show={showTimeModal} onHide={() => setShowTimeModal(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>
+          <Modal.Title className="fs-6 fs-md-5">
             {editingTeacher?.action === 'edit' 
               ? `Edit ${editingTimeType === 'arrival' ? 'Arrival' : 'Departure'} Time`
               : editingTeacher?.action === 'arrival' 
@@ -786,7 +896,7 @@ const TeacherAttendance = () => {
             }
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-3 p-md-4">
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>
@@ -839,7 +949,7 @@ const TeacherAttendance = () => {
                 />
               )}
 
-              <Form.Text className="text-muted">
+              <Form.Text className="text-muted d-block mt-2">
                 {useTimePicker 
                   ? "Select time using the time picker (24-hour format will be converted to 12-hour)"
                   : "Enter time in 12-hour format (e.g., 9:30 AM, 2:15 PM)"
@@ -848,11 +958,11 @@ const TeacherAttendance = () => {
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowTimeModal(false)}>
+        <Modal.Footer className="p-2 p-md-3">
+          <Button variant="secondary" onClick={() => setShowTimeModal(false)} size="sm" className="w-50 w-md-auto">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleTimeSubmit}>
+          <Button variant="primary" onClick={handleTimeSubmit} size="sm" className="w-50 w-md-auto">
             {editingTeacher?.action === 'edit' 
               ? `Update ${editingTimeType === 'arrival' ? 'Arrival' : 'Departure'}`
               : editingTeacher?.action === 'arrival' 
@@ -866,38 +976,38 @@ const TeacherAttendance = () => {
       {/* QR Scan Modal */}
       <Modal show={showQrModal} onHide={closeQrScan} size="lg" centered>
         <Modal.Header closeButton>
-          <Modal.Title>QR Scan - {qrAction === 'arrival' ? 'Arrival' : 'Departure'}</Modal.Title>
+          <Modal.Title className="fs-6 fs-md-5">QR Scan - {qrAction === 'arrival' ? 'Arrival' : 'Departure'}</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-2 p-md-3">
           <div className="d-flex justify-content-center">
             <video ref={videoRef} style={{ width: '100%', maxWidth: 600, borderRadius: 8 }} />
             <canvas ref={canvasRef} style={{ display: 'none' }} />
           </div>
-          <div className="mt-2 text-muted small">
+          <div className="mt-2 text-muted small text-center">
             Point the camera at a teacher QR that contains teacher ID or email.
           </div>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={closeQrScan}>Close</Button>
+        <Modal.Footer className="p-2 p-md-3">
+          <Button variant="secondary" onClick={closeQrScan} size="sm" className="w-100 w-md-auto">Close</Button>
         </Modal.Footer>
       </Modal>
 
       {/* Fingerprint scanning indicator */}
       <Modal show={isFingerprintScanning} onHide={() => setIsFingerprintScanning(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Scanning Fingerprint…</Modal.Title>
+          <Modal.Title className="fs-6 fs-md-5">Scanning Fingerprint…</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-3 p-md-4">
           <div className="text-center">Please place finger on the scanner.</div>
         </Modal.Body>
       </Modal>
 
       {/* Status Edit Modal */}
-      <Modal show={showStatusModal} onHide={() => setShowStatusModal(false)}>
+      <Modal show={showStatusModal} onHide={() => setShowStatusModal(false)} centered>
         <Modal.Header closeButton>
-          <Modal.Title>Edit Attendance Status</Modal.Title>
+          <Modal.Title className="fs-6 fs-md-5">Edit Attendance Status</Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="p-3 p-md-4">
           <Form>
             <Form.Group className="mb-3">
               <Form.Label>Attendance Status</Form.Label>
@@ -909,17 +1019,17 @@ const TeacherAttendance = () => {
                 <option value="present">Present</option>
                 <option value="absent">Absent</option>
               </Form.Select>
-              <Form.Text className="text-muted">
+              <Form.Text className="text-muted d-block mt-2">
                 Changing to "Absent" will clear arrival and departure times.
               </Form.Text>
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowStatusModal(false)}>
+        <Modal.Footer className="p-2 p-md-3">
+          <Button variant="secondary" onClick={() => setShowStatusModal(false)} size="sm" className="w-50 w-md-auto">
             Cancel
           </Button>
-          <Button variant="primary" onClick={handleStatusSubmit}>
+          <Button variant="primary" onClick={handleStatusSubmit} size="sm" className="w-50 w-md-auto">
             Update Status
           </Button>
         </Modal.Footer>
