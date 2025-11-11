@@ -75,6 +75,9 @@ const Auth = () => {
   useEffect(() => {
     if (currentUser && userRole && !authLoading && isRedirecting) {
       switch (userRole) {
+        case 'superadmin':
+          navigate('/super-admin/dashboard');
+          break;
         case 'admin':
           navigate('/admin/dashboard');
           break;
@@ -492,6 +495,7 @@ const Auth = () => {
                               <option value="student">Student</option>
                               <option value="teacher">Teacher</option>
                               <option value="parent">Parent</option>
+                              <option value="superadmin">Super Admin</option>
                               <option value="admin">Admin</option>
                               <option value="transport">Transport</option>
                               <option value="library">Library</option>
